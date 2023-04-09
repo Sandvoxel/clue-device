@@ -3,18 +3,20 @@
 
 extern crate vlc;
 
-use std::{fs, thread};
+use std::{fs, io, thread};
 use std::env::current_dir;
 use std::fs::{File};
 use std::io::{Read};
-
+use std::path::Path;
 
 
 use std::sync::mpsc::channel;
-use multiparty::server::sans_io::FormData;
+use log4rs::append::Append;
+use multipart::server::{Entries, Multipart, SaveResult};
+use multipart::server::save::{SaveDir, TempDir};
 use tera::{Context, Tera};
 
-use tiny_http::{Server, Method, Header, StatusCode, Response};
+use tiny_http::{Server, Method, Header, StatusCode, Response, HeaderField};
 
 
 use vlc::{Instance, Media, MediaPlayer};
@@ -43,7 +45,7 @@ fn main() {
     let _tx = command_tx.clone();
     let video_files_dir = project_dir.join("files");
 
-    thread::spawn(move || {
+/*    thread::spawn(move || {
         let instance = Instance::new().unwrap();
 
         //let md = Media::new_path(&instance, video_files_dir.as_path().join("Flight Footage.mp4")).unwrap();
@@ -80,12 +82,12 @@ fn main() {
         }
 
 
-    });
+    });*/
 
     let mut tera = Tera::default();
 
 
-    for request in server.incoming_requests() {
+    for mut request in server.incoming_requests() {
         println!("received request! method: {:?}, url: {:?}, headers: {:?}",
                  request.method(),
                  request.url(),
@@ -107,22 +109,36 @@ fn main() {
             Method::Post => {
                 match request.url() {
                     "/upload" => {
-                        if let Some(content_type) = request.headers().iter().find(|x| x.field.as_str() == "Content-Type") {
-                            if content_type.value.as_str().contains("multipart/form-data") {
-                                let boundary = content_type.value
-                                    .as_str()
-                                    .split("boundary=")
-                                    .nth(1)
-                                    .unwrap()
-                                    .to_string();
-                                println!("{}",boundary);
+                        let boundary = request
+                            .headers()
+                            .iter()
+                            .find(|h| h.field.as_str() == "Content-Type")
+                            .map(|h| {
+                                let content_type = h.value.as_str();
+                                content_type.split("boundary=").last().unwrap().to_string()
+                            });
 
-                                let _multipart = FormData::new(&boundary);
+                        let boundary = match boundary {
+                            Some(boundary) => boundary,
+                            None => {"".to_owned()},
+                        };
+                        let mut multipart = Multipart::with_body(request.as_reader(), &boundary);
 
+                        while let Ok(Some(mut field)) = multipart.read_entry() {
+                            let file_name = field
+                                .headers
+                                .filename
+                                .clone()
+                                .ok_or(io::Error::new(io::ErrorKind::InvalidInput, "No filename found"))
+                                .unwrap();
 
-                            }
+                            let file_path = project_dir.clone().join("files").join(file_name);
+
+                            println!("{}", file_path.as_path().to_str().unwrap());
+
+                            let mut file = File::create(&file_path).unwrap();
+                            io::copy(&mut field.data, &mut file).unwrap();
                         }
-
                     },
                     &_ => {}
                 }

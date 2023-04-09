@@ -1,0 +1,30 @@
+<html>
+    <body>
+        <ul>
+            {% for item in items %}
+            <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+
+        <form id="upload" method="post" enctype="multipart/form-data">
+            <input type="file" name="files[]" multiple>
+            <button type="submit">Upload</button>
+        </form>
+    </body>
+    <script>
+        const form = document.querySelector('#upload');
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const files = document.querySelector('input[type=file]').files;
+            if (files.length === 0) {
+                alert('Please select at least one file.');
+                return;
+            }
+            const formData = new FormData(form);
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/upload');
+            xhr.send(formData);
+        });
+    </script>
+</html>
+

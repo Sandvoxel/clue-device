@@ -3,24 +3,23 @@
 
 extern crate vlc;
 
-use std::{fs, io, thread};
+use std::{fs, io};
 use std::env::current_dir;
-use std::fs::{File};
+
+use std::fs::{File, read};
 use std::io::{Read};
-use std::path::Path;
-
-
+use std::path::{PathBuf};
 use std::sync::mpsc::channel;
-use log4rs::append::Append;
-use multipart::server::{Entries, Multipart, SaveResult};
-use multipart::server::save::{SaveDir, TempDir};
+
+use multipart::server::{Multipart};
 use tera::{Context, Tera};
+use tiny_http::{Server, Method, Header, StatusCode, Response};
+use image::{ColorType, ImageBuffer, Rgba};
 
-use tiny_http::{Server, Method, Header, StatusCode, Response, HeaderField};
+use rusttype::{point, Scale};
 
 
-use vlc::{Instance, Media, MediaPlayer};
-use crate::Command::{HOME, PAUSE, PLAY};
+use crate::Command::{PAUSE, PLAY};
 
 
 
@@ -28,7 +27,71 @@ use crate::Command::{HOME, PAUSE, PLAY};
 enum Command {
     PLAY,
     PAUSE,
-    HOME
+    //HOME
+}
+
+#[cfg(target_os = "windows")]
+fn default_font_path() -> PathBuf {
+    PathBuf::from(r"C:\Windows\Fonts\arial.ttf")
+}
+
+#[cfg(target_os = "macos")]
+fn default_font_path() -> PathBuf {
+    PathBuf::from("/System/Library/Fonts/Supplemental/Arial.ttf")
+}
+
+#[cfg(target_os = "linux")]
+fn default_font_path() -> PathBuf {
+    PathBuf::from("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
+}
+
+fn generate_image_with_text(text: &str, output_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+    // Create an image buffer
+    let mut image = ImageBuffer::<Rgba<u8>, Vec<u8>>::new(1920, 1080);
+
+    // Set the background color
+    let background_color = Rgba([255, 255, 255, 255]);
+    for pixel in image.pixels_mut() {
+        *pixel = background_color;
+    }
+
+    // Draw text on the image
+    let font = rusttype::Font::try_from_vec(read(default_font_path()).unwrap()).unwrap();
+
+    let font_size = 50.0;
+
+    let scale = Scale {
+        x: 100.0,
+        y: 100.0
+    };
+    // Draw text on the image
+    let glyphs: Vec<rusttype::PositionedGlyph> = font.layout(text, scale, point(0.0, font_size)).collect();
+
+    for glyph in glyphs {
+        if let Some(bb) = glyph.pixel_bounding_box() {
+            glyph.draw(|x, y, v| {
+                let px = x as i32 + bb.min.x + 400;
+                let py = y as i32 + bb.min.y + 400;
+
+                if px >= 0 && px < image.width() as i32 && py >= 0 && py < image.height() as i32 {
+                    let background_color = image.get_pixel(px as u32, py as u32);
+                    let alpha = (v * 255.0) / 255.0;
+                    let color = Rgba([
+                        (background_color[0] as f32 * (1.0 - alpha) + 0.0 * alpha) as u8,
+                        (background_color[1] as f32 * (1.0 - alpha) + 0.0 * alpha) as u8,
+                        (background_color[2] as f32 * (1.0 - alpha) + 0.0 * alpha) as u8,
+                        255,
+                    ]);
+                    image.put_pixel(px as u32, py as u32, color);
+                }
+            });
+        }
+    }
+
+    // Save the image
+    image::save_buffer(output_path, &image.clone().into_raw(), image.width(), image.height(), ColorType::Rgba8)?;
+
+    Ok(())
 }
 
 
@@ -37,13 +100,29 @@ fn main() {
 
     let project_dir = current_dir().unwrap();
 
+    if fs::remove_file(project_dir.join("files").join("idle.png")).is_ok() {
+        println!("Deleteing idle.png");
+    }
 
 
 
-    let (command_tx, command_rx) = channel::<Command>();
+    if !project_dir.join("files").join("idle.png").is_file() {
+        match generate_image_with_text("Idle PNG", project_dir.join("files/idle.png")) {
+            Ok(_) => {
+                println!("Created File!")
+            }
+            Err(error) => {
+                println!("{:?}", error)
+            }
+        };
+    }
+
+
+
+    let (command_tx, _command_rx) = channel::<Command>();
 
     let _tx = command_tx.clone();
-    let video_files_dir = project_dir.join("files");
+    let _video_files_dir = project_dir.join("files");
 
 /*    thread::spawn(move || {
         let instance = Instance::new().unwrap();

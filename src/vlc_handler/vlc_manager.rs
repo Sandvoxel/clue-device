@@ -37,4 +37,8 @@ impl VlcManager {
     pub fn send_command(&self, command: Command) -> Result<(), SendError<Command>> {
         self.command_channel.send(command)
     }
+
+    pub fn get_command_channel(&self) -> Sender<Command> {
+        self.command_channel.clone()
+    }
 }

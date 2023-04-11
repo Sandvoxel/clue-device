@@ -2,6 +2,7 @@
 // https://creativecommons.org/publicdomain/zero/1.0/deed
 
 mod vlc_handler;
+mod rfid;
 
 extern crate vlc;
 
@@ -16,6 +17,7 @@ use multipart::server::{Multipart};
 use tera::{Context, Tera};
 use tiny_http::{Server, Method, Header, StatusCode, Response};
 use log::{info};
+use crate::rfid::rfid::Rfid;
 use crate::vlc_handler::vlc_manager::Command::Play;
 use crate::vlc_handler::vlc_manager::VlcManager;
 
@@ -33,6 +35,8 @@ fn main() {
     let project_dir = current_dir().unwrap();
 
     let vlc_manager = VlcManager::new();
+
+    let rfid = Rfid::new(vlc_manager.get_command_channel());
 
     let mut tera = Tera::default();
 

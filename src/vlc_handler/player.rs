@@ -3,7 +3,8 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
-use std::{thread};
+use std::{fs, thread};
+use std::env::current_dir;
 use std::time::Duration;
 
 use log::{error, info};
@@ -24,6 +25,15 @@ impl Player {
         if let Some(instance) = Instance::new(){
             if let Some(media_player) = MediaPlayer::new(&instance){
 
+                let files_dir = current_dir().unwrap().join("files");
+
+                if !files_dir.is_dir() {
+                    info!("Creating Dir to store files at this location: {}", files_dir.as_path().display());
+                    fs::create_dir(&files_dir).unwrap_or_else(|e|{
+                        error!("Failed to create dir to store files: {:?}", e);
+                        panic!("Could not create dir to store files: {:?}", e);
+                    });
+                }
 
                 let idle_media = create_idle_image(&instance);
 

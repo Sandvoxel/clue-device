@@ -9,14 +9,6 @@ use crate::vlc_handler::image_generation::generate_image_with_text;
 pub fn create_startup_file(instance: &Instance) -> Media {
     let files_dir = current_dir().unwrap().join("files");
 
-    if !files_dir.is_dir() {
-        info!("Creating Dir to store files at this location: {}", files_dir.as_path().display());
-        fs::create_dir(&files_dir).unwrap_or_else(|e|{
-            error!("Failed to create dir to store files: {:?}", e);
-            panic!("Could not create dir to store files: {:?}", e);
-        });
-    }
-
 
     let startup_image_location = files_dir.join("startup.png");
 

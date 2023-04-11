@@ -56,7 +56,7 @@ pub fn create_idle_image(instance: &Instance) -> Media {
         });
 
         match generate_image_with_text(
-            format!("This is the default Idle screen to add your own upload one to {} with the name idle.png", my_local_ip).as_str(),
+            format!("This is the default Idle screen to add your own upload one to {}:8000 with the name idle.png", my_local_ip).as_str(),
                                        &idle_image_path) {
             Ok(_) => {
                 info!("Created default idle image ");

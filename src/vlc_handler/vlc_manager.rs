@@ -9,7 +9,7 @@ use std::thread::JoinHandle;
 pub enum Command {
     Play,
     Pause,
-    Home,
+    Idle,
     PairCard(Receiver<()>)
 }
 

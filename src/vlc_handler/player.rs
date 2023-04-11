@@ -44,8 +44,8 @@ impl Player {
 
                 let tx = command_channel.0.clone();
                 thread::spawn(move ||{
-                    thread::sleep(Duration::from_secs(3));
-                    tx.send(Command::Home).unwrap_or_else(|e|{
+                    thread::sleep(Duration::from_secs(45));
+                    tx.send(Command::Idle).unwrap_or_else(|e|{
                         error!("Failed to send Home Command to vlc player: {:?}", e);
                         panic!();
                     });
@@ -75,7 +75,7 @@ impl Player {
             match command {
                 Command::Play => {self.media_player.play().unwrap()}
                 Command::Pause => {self.media_player.set_pause(true)}
-                Command::Home => {
+                Command::Idle => {
                     self.media_player.set_media(&self.idle_media);
                     self.media_player.play().unwrap();
                 }
@@ -91,7 +91,7 @@ impl Player {
                     thread::spawn(move ||{
                         thread::sleep(Duration::from_secs(300));
                         if no_input_clone.load(Ordering::SeqCst) {
-                            tx.send(Command::Home).unwrap_or_else(|e|{
+                            tx.send(Command::Idle).unwrap_or_else(|e|{
                                 error!("Failed to send Home Command to vlc player: {:?}", e);
                                 panic!();
                             });

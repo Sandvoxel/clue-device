@@ -1,8 +1,19 @@
 <html>
     <body>
-        <ul>
+        <ul class="no-bullets">
             {% for item in items %}
-            <li>{{ item }}</li>
+            <li class="file-list">
+                <form id="action-form" method="post" action="/action">
+                    {{ item }}
+                    <input type="hidden" name="info" value="{{ item }}">
+                    <select>
+                        <option value="pair-with-card">Pair With Card</option>
+                        <option value="download">Download</option>
+                        <option value="delete">Delete</option>
+                    </select>
+                    <button type="submit">Submit</button>
+                </form>
+            </li>
             {% endfor %}
         </ul>
 
@@ -10,8 +21,57 @@
             <input type="file" name="files[]" multiple>
             <button type="submit">Upload</button>
         </form>
+
+
+        <div id="progress-container" style="display: none;">
+            <div id="progress-bar"></div>
+        </div>
     </body>
+    <style>
+        ul.no-bullets {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        li.file-list {
+            padding-bottom: 0.5em;
+        }
+        #progress-container {
+            width: 100%;
+            height: 10px;
+            background-color: #f3f3f3;
+            position: relative;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0;
+            background-color: #4CAF50;
+            position: absolute;
+        }
+    </style>
     <script>
+
+        const actionForm = document.querySelector('#action-form');
+        actionForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+
+            const formData = new FormData(form);
+            const xhr = new XMLHttpRequest();
+
+            // Add an event listener for the 'load' event
+            xhr.addEventListener('load', () => {
+                if (xhr.status === 200) {
+                    // Handle successful submission
+                    console.log('Form submitted successfully');
+                } else {
+                    alert(`Form submission failed with status ${xhr.status}`);
+                }
+            });
+
+            xhr.open('POST', '/submit-form');
+            xhr.send(formData);
+        });
+
         const form = document.querySelector('#upload');
         form.addEventListener('submit', (event) => {
             event.preventDefault();
@@ -31,6 +91,52 @@
                 } else {
                     alert(`Upload failed with status ${xhr.status}`);
                 }
+            });
+
+            xhr.open('POST', '/upload');
+            xhr.send(formData);
+        });
+
+        const progressContainer = document.querySelector('#progress-container');
+        const progressBar = document.querySelector('#progress-bar');
+
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const files = document.querySelector('input[type=file]').files;
+            if (files.length === 0) {
+                alert('Please select at least one file.');
+                return;
+            }
+            const formData = new FormData(form);
+            const xhr = new XMLHttpRequest();
+
+            // Add an event listener for the 'load' event
+            xhr.addEventListener('load', () => {
+                if (xhr.status === 200) {
+                    // Reload the page when the upload is successful
+                    location.reload();
+                } else {
+                    alert(`Upload failed with status ${xhr.status}`);
+                }
+            });
+
+            // Add an event listener for the 'progress' event
+            xhr.upload.addEventListener('progress', (event) => {
+                if (event.lengthComputable) {
+                    const percentComplete = (event.loaded / event.total) * 100;
+                    progressBar.style.width = percentComplete + '%';
+                }
+            });
+
+            // Add an event listener for the 'loadstart' event
+            xhr.addEventListener('loadstart', () => {
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+            });
+
+            // Add an event listener for the 'loadend' event
+            xhr.addEventListener('loadend', () => {
+                progressContainer.style.display = 'none';
             });
 
             xhr.open('POST', '/upload');

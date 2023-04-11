@@ -1,0 +1,27 @@
+appenders:
+  stdout:
+    kind: console
+    encoder:
+      pattern: "{d(%Y-%m-%d %H:%M:%S)} {h({l})} {m}{n}"
+
+  rolling_file:
+    kind: rolling_file
+    path: "logs/app.log"
+    encoder:
+      pattern: "{d(%Y-%m-%d %H:%M:%S)} {h({l})} {m}{n}"
+    policy:
+      kind: compound
+      trigger:
+        kind: size
+        limit: "10MB"
+      roller:
+        kind: fixed_window
+        base: 0
+        count: 10
+        pattern: "logs/app.{d(%Y-%m-%d_%H-%M-%S)}.{}.log"
+
+root:
+  level: info
+  appenders:
+    - stdout
+    - rolling_file

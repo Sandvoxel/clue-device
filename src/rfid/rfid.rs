@@ -13,7 +13,7 @@ pub struct Rfid {
 
 impl Rfid {
     pub fn pair_card(&self) {
-        self.sled_database.insert("","")?;
+        self.sled_database.insert("","").unwrap();
     }
 }
 
@@ -22,8 +22,8 @@ impl Rfid {
         let database_dir = current_dir().unwrap().join("data");
 
         if !database_dir.is_dir() {
-            info!("Creating Dir to store files at this location: {}", files_dir.as_path().display());
-            fs::create_dir(&files_dir).unwrap_or_else(|e|{
+            info!("Creating Dir to for database at this location: {}", database_dir.as_path().display());
+            fs::create_dir(&database_dir).unwrap_or_else(|e|{
                 error!("Failed to create database dir: {:?}", e);
                 panic!("Failed to create database dir: {:?}", e);
             });

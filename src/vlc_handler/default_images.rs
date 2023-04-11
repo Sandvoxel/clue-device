@@ -1,10 +1,10 @@
 use std::env::current_dir;
 use std::fs;
-use std::path::PathBuf;
+
 use local_ip_address::local_ip;
 use log::{error, info};
 use vlc::{Instance, Media};
-use crate::utils::image_generation::generate_image_with_text;
+use crate::vlc_handler::image_generation::generate_image_with_text;
 
 pub fn create_startup_file(instance: &Instance) -> Media {
     let files_dir = current_dir().unwrap().join("files");
@@ -46,7 +46,7 @@ pub fn create_startup_file(instance: &Instance) -> Media {
         };
     };
 
-    Media::new_path(&instance, startup_image_location.as_path())
+    Media::new_path(instance, startup_image_location.as_path())
         .unwrap_or_else(||{
             error!("Failed to open Startup image at startup this is fatal closing app...");
             panic!("Failed to load Startup image")
@@ -76,7 +76,7 @@ pub fn create_idle_image(instance: &Instance) -> Media {
         };
     }
 
-    return Media::new_path(&instance, idle_image_path.as_path())
+    return Media::new_path(instance, idle_image_path.as_path())
         .unwrap_or_else(||{
             error!("Failed to open Idle image at startup this is fatal closing app...");
             panic!("Failed to load idle image")
@@ -98,7 +98,7 @@ pub fn create_paircard_image(instance: &Instance) -> Media {
         };
     }
 
-    Media::new_path(&instance, pair_card_image.as_path())
+    Media::new_path(instance, pair_card_image.as_path())
         .unwrap_or_else(||{
             error!("Failed to open Idle image at startup this is fatal closing app...");
             panic!("Failed to load idle image")

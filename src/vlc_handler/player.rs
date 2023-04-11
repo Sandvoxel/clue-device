@@ -1,14 +1,13 @@
-use std::env::current_dir;
-use std::path::PathBuf;
+
+
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
-use std::{fs, thread};
+use std::{thread};
 use std::time::Duration;
-use local_ip_address::local_ip;
+
 use log::{error, info};
 use vlc::{Instance, Media, MediaPlayer};
-use crate::utils::image_generation::generate_image_with_text;
 use crate::vlc_handler::default_images::{create_idle_image, create_paircard_image, create_startup_file};
 use crate::vlc_handler::vlc_manager::{Command};
 
@@ -90,7 +89,7 @@ impl Player {
                     });
 
 
-                    if let Ok(_) = rec.recv(){
+                    if rec.recv().is_ok(){
                         no_input.store(false, Ordering::SeqCst);
 
                     }

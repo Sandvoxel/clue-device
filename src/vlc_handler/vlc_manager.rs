@@ -1,15 +1,8 @@
-use std::env::current_dir;
 use crate::vlc_handler::player::{Player};
 use std::sync::mpsc::{channel, Receiver, Sender, SendError};
-use std::{fs, thread};
+use std::{thread};
 
 use std::thread::JoinHandle;
-use std::time::Duration;
-use local_ip_address::local_ip;
-use log::{error, info};
-
-use crate::utils::image_generation::generate_image_with_text;
-use crate::vlc_handler::vlc_manager::Command::Home;
 
 
 #[derive(Debug)]

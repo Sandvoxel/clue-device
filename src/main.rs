@@ -18,7 +18,7 @@ use tera::{Context, Tera};
 use tiny_http::{Server, Method, Header, StatusCode, Response};
 use log::{info};
 use crate::rfid::rfid::Rfid;
-use crate::vlc_handler::vlc_manager::Command::Play;
+use crate::vlc_handler::vlc_manager::Command::{Play, PlayMedia};
 use crate::vlc_handler::vlc_manager::VlcManager;
 
 
@@ -50,7 +50,8 @@ fn main() {
         match request.method() {
             Method::Get => {
                 if request.url() == "/play" {
-                    vlc_manager.send_command(Play).unwrap();
+                    let path = project_dir.join("files").join("startup.png");
+                    vlc_manager.send_command(PlayMedia(path)).unwrap();
                     //command_tx.send(PLAY).unwrap();
                 }else if request.url() == "/pause" {
                     //command_tx.send(PAUSE).unwrap();

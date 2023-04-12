@@ -1,6 +1,7 @@
 use crate::vlc_handler::player::{Player};
 use std::sync::mpsc::{channel, Receiver, Sender, SendError};
 use std::{thread};
+use std::path::PathBuf;
 
 use std::thread::JoinHandle;
 
@@ -10,6 +11,7 @@ pub enum Command {
     Play,
     Pause,
     Idle,
+    PlayMedia(PathBuf),
     PairCard(Receiver<()>)
 }
 

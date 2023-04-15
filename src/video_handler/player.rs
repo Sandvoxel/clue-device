@@ -31,12 +31,7 @@ impl Player {
     pub fn new(command_channel: (Sender<Command>, Receiver<Command>)) -> Result<Player, libmpv::Error> {
         if let Ok(mut media_player) = Mpv::new() {
             media_player.set_property("volume", 15)?;
-            media_player.set_property("keep-open", "yes").unwrap();
-            //media_player.set_property("loop-file", "inf").unwrap();
-            //media_player.set_property("ao", "jack").unwrap();
-            //media_player.event_context_mut().disable_deprecated_events().unwrap();
-
-
+            media_player.set_property("keep-open", "yes")?;
 
 
             //FIXME: add logging for player
@@ -96,7 +91,7 @@ impl Player {
 
     pub fn thread(&mut self) {
         while let Ok(command) = self.command_channel.1.recv() {
-            info!("Vlc Received Command: {:?}", command);
+            info!("Media Player Received Command: {:?}", command);
             match command {
                 Idle => {
                     //FIXME: need to not crash here

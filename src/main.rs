@@ -3,6 +3,7 @@
 
 mod video_handler;
 mod rfid;
+mod web_server;
 
 use std::{fs, io};
 use std::env::current_dir;
@@ -14,16 +15,17 @@ use std::io::{Read};
 use multipart::server::{Multipart};
 use tera::{Context, Tera};
 use tiny_http::{Server, Method, Header, StatusCode, Response};
-use log::{info};
+use log::{debug, error, info};
 use crate::rfid::rfid::Rfid;
 use crate::video_handler::media_manager::Command::{PlayMedia};
 use crate::video_handler::media_manager::VlcManager;
+use crate::web_server::file_action_handler::{ActionFormError, route_action_form};
 
 
 fn main() {
 
     let log_config = current_dir().unwrap().join("config/log4rs.yaml");
-    log4rs::init_file(log_config, Default::default()).unwrap();
+    log4rs_gelf::init_file(log_config, Default::default()).unwrap();
 
 
     info!("{}","-".repeat(50));
@@ -34,33 +36,24 @@ fn main() {
 
     let project_dir = current_dir().unwrap();
 
-    let vlc_manager = VlcManager::new();
+    let media_manager = VlcManager::new();
 
-    let rfid = Rfid::new(vlc_manager.get_command_channel());
+    let rfid = Rfid::new(media_manager.get_command_channel());
 
     let mut tera = Tera::default();
 
 
     for mut request in server.incoming_requests() {
-        info!("received request! method: {:?}, url: {:?}, headers: {:?}",
+        debug!("received request! method: {:?}, url: {:?}, headers: {:?}",
                  request.method(),
                  request.url(),
                  request.headers()
         );
+        info!("Received request from {}: {:?}", request.remote_addr().unwrap(), request);
+
         match request.method() {
             Method::Get => {
-                if request.url() == "/play" {
-                    let path = project_dir.join("files").join("Img 4541.mp4");
-                    vlc_manager.send_command(PlayMedia(path)).unwrap();
-                    //command_tx.send(PLAY).unwrap();
-                }else if request.url() == "/pause" {
-                    //command_tx.send(PAUSE).unwrap();
-                }else {
-                    //let path = PathBuf::from(filedir.as_path().join("Flight Footage.mp4"));
-                    //mdp.set_media(&md);
-                    //mdp.play().unwrap();
 
-                }
             },
             Method::Post => {
                 match request.url() {
@@ -97,7 +90,15 @@ fn main() {
                         }
                     },
                     "/action" => {
-
+                        match route_action_form(request, &media_manager) {
+                            Ok(action) => {
+                                info!("Media Action Form routed successfully. Action preformed : {:?}", action)
+                            }
+                            Err(error) => {
+                                error!("Routing of action form failed because: {:?}", error)
+                            }
+                        }
+                        continue
                     }
                     &_ => {}
                 }
@@ -114,6 +115,7 @@ fn main() {
         let paths = fs::read_dir(project_dir.join("files"))
             .expect("Should Have been a files DIR")
             .map(|entry| entry.unwrap().path().file_name().unwrap().to_str().unwrap().to_owned())
+            .filter(|item| (!item.contains(".png") || item.eq("idle.png")))
             .collect::<Vec<_>>();
 
         let mut context = Context::new();

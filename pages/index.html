@@ -3,14 +3,17 @@
         <ul class="no-bullets">
             {% for item in items %}
             <li class="file-list">
-                <form id="action-form" method="post" action="/action">
+                <form class="action-form" method="post" action="/action">
                     {{ item }}
                     <input type="hidden" name="info" value="{{ item }}">
-                    <select>
-                        <option value="pair-with-card">Pair With Card</option>
-                        <option value="download">Download</option>
-                        <option value="delete">Delete</option>
-                    </select>
+                    <label >
+                        <select name="action">
+                            <option value="PairToCard">Pair With Card</option>
+                            <option value="Play">Play</option>
+                            <option value="Download">Download</option>
+                            <option value="Delete">Delete</option>
+                        </select>
+                    </label>
                     <button type="submit">Submit</button>
                 </form>
             </li>
@@ -51,25 +54,39 @@
     </style>
     <script>
 
-        const actionForm = document.querySelector('#action-form');
-        actionForm.addEventListener('submit', (event) => {
-            event.preventDefault();
+        const actionForms = document.querySelectorAll('.action-form');
+        actionForms.forEach((actionForm) => {
+            actionForm.addEventListener('submit', (event) => {
+                event.preventDefault();
 
-            const formData = new FormData(form);
-            const xhr = new XMLHttpRequest();
+                const xhr = new XMLHttpRequest();
+                const formData = new FormData(actionForm);
+                const action = formData.get('action');
 
-            // Add an event listener for the 'load' event
-            xhr.addEventListener('load', () => {
-                if (xhr.status === 200) {
-                    // Handle successful submission
-                    console.log('Form submitted successfully');
+                if (action === 'Download') {
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = `/download?filename=${encodeURIComponent(filename)}`;
+                    downloadLink.download = filename;
+                    downloadLink.style.display = 'none';
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
                 } else {
-                    alert(`Form submission failed with status ${xhr.status}`);
+                    // Add an event listener for the 'load' event
+                    xhr.addEventListener('load', () => {
+                        if (xhr.status === 200) {
+                            // Handle successful submission
+                            console.log('Form submitted successfully');
+                        } else {
+                            alert(`Form submission failed with status ${xhr.status}`);
+                        }
+                    });
                 }
-            });
 
-            xhr.open('POST', '/submit-form');
-            xhr.send(formData);
+                xhr.open('POST', '/action');
+                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                xhr.send(new URLSearchParams(formData).toString());
+            });
         });
 
         const form = document.querySelector('#upload');
@@ -80,6 +97,15 @@
                 alert('Please select at least one file.');
                 return;
             }
+
+            // Check if all files have the extension .mp4
+            for (const file of files) {
+                if (!file.name.toLowerCase().endsWith('.mp4')) {
+                    alert(`File "${file.name}" is not an MP4 file.`);
+                    return;
+                }
+            }
+
             const formData = new FormData(form);
             const xhr = new XMLHttpRequest();
 

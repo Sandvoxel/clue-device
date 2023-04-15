@@ -20,8 +20,21 @@ appenders:
         count: 10
         pattern: "logs/app.{d(%Y-%m-%d_%H-%M-%S)}.{}.log"
 
+  graylog:
+    additional_fields:
+      component: rust-cs
+    buffer_duration: 5
+    buffer_size: 5
+    hostname: 10.0.0.150
+    kind: buffer
+    level: Informational
+    null_character: true
+    port: 12201
+    use_tls: false
+
 root:
   level: info
   appenders:
     - stdout
     - rolling_file
+    - graylog

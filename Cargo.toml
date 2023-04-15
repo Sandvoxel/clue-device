@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 serde = "1.0.159"
 serde_urlencoded = "0.7"
-vlc-rs = {version = "0.3.0", path = "../vlc-rs"}
 tiny_http = "0.12.0"
 tera = "1.18.1"
 log = "0.4.17"
@@ -19,7 +18,7 @@ local-ip-address = "0.5.1"
 mfrc522 = "0.5.0"
 unicode-linebreak = "0.1.4"
 sled = "0.34.1"
-
+libmpv = "2.0.1"
 
 [dependencies.multipart]
 path = "./multipart"

@@ -4,7 +4,7 @@ use std::sync::mpsc::Sender;
 use log::{error, info};
 use mfrc522::Mfrc522;
 use sled::Db;
-use crate::vlc_handler::vlc_manager::Command;
+use crate::video_handler::media_manager::Command;
 
 pub struct Rfid {
     vlc_command_channel: Sender<Command>,

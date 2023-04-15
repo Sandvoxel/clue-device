@@ -1,4 +1,4 @@
-use crate::vlc_handler::player::{Player};
+use crate::video_handler::player::{Player};
 use std::sync::mpsc::{channel, Receiver, Sender, SendError};
 use std::{thread};
 use std::path::PathBuf;
@@ -8,11 +8,9 @@ use std::thread::JoinHandle;
 
 #[derive(Debug)]
 pub enum Command {
-    Play,
-    Pause,
     Idle,
     PlayMedia(PathBuf),
-    PairCard(Receiver<()>)
+    PairCard(Receiver<()>),
 }
 
 pub struct VlcManager {
@@ -28,6 +26,7 @@ impl VlcManager {
             command_channel: command_tx.clone(),
             _player_thread_handle: thread::spawn(move || {
                 Player::new((command_tx, command_rx))
+                    .expect("FIXME: this should be changed")
                     .thread();
             })
         }

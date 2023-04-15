@@ -1,10 +1,8 @@
 // This file is an example for vlc-rs, licensed under CC0.
 // https://creativecommons.org/publicdomain/zero/1.0/deed
 
-mod vlc_handler;
+mod video_handler;
 mod rfid;
-
-extern crate vlc;
 
 use std::{fs, io};
 use std::env::current_dir;
@@ -18,12 +16,14 @@ use tera::{Context, Tera};
 use tiny_http::{Server, Method, Header, StatusCode, Response};
 use log::{info};
 use crate::rfid::rfid::Rfid;
-use crate::vlc_handler::vlc_manager::Command::{Play, PlayMedia};
-use crate::vlc_handler::vlc_manager::VlcManager;
+use crate::video_handler::media_manager::Command::{PlayMedia};
+use crate::video_handler::media_manager::VlcManager;
 
 
 fn main() {
-    log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
+
+    let log_config = current_dir().unwrap().join("config/log4rs.yaml");
+    log4rs::init_file(log_config, Default::default()).unwrap();
 
 
     info!("{}","-".repeat(50));
@@ -50,7 +50,7 @@ fn main() {
         match request.method() {
             Method::Get => {
                 if request.url() == "/play" {
-                    let path = project_dir.join("files").join("startup.png");
+                    let path = project_dir.join("files").join("Img 4541.mp4");
                     vlc_manager.send_command(PlayMedia(path)).unwrap();
                     //command_tx.send(PLAY).unwrap();
                 }else if request.url() == "/pause" {

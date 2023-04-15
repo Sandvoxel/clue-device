@@ -1,4 +1,4 @@
 mod player;
-pub mod vlc_manager;
+pub mod media_manager;
 mod default_images;
 pub mod image_generation;

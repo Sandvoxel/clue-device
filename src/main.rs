@@ -4,6 +4,8 @@
 mod video_handler;
 mod rfid;
 mod web_server;
+mod config;
+mod logging;
 
 use std::{fs, io};
 use std::env::current_dir;
@@ -16,25 +18,25 @@ use multipart::server::{Multipart};
 use tera::{Context, Tera};
 use tiny_http::{Server, Method, Header, StatusCode, Response};
 use log::{debug, error, info};
+use crate::config::config::DeviceConfiguration;
+use crate::logging::logging::setup_logging;
 use crate::rfid::rfid::Rfid;
 use crate::video_handler::media_manager::Command::{PlayMedia};
 use crate::video_handler::media_manager::VlcManager;
 use crate::web_server::file_action_handler::{ActionFormError, route_action_form};
 
 
+
 fn main() {
 
-    let log_config = current_dir().unwrap().join("config/log4rs.yaml");
-    log4rs_gelf::init_file(log_config, Default::default()).unwrap();
+    let project_dir = current_dir().unwrap();
 
+    let dev_config = DeviceConfiguration::load(project_dir.join("config/Config.yaml"));
 
-    info!("{}","-".repeat(50));
+    setup_logging(&dev_config).unwrap();
     info!("Starting Server!");
 
-
     let server = Server::http("0.0.0.0:8000").unwrap();
-
-    let project_dir = current_dir().unwrap();
 
     let media_manager = VlcManager::new();
 

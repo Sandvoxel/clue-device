@@ -7,12 +7,11 @@ use std::io::Read;
 use std::task::ready;
 use log::{debug, error};
 use tiny_http::{Header, Request, Response};
-use crate::video_handler::media_manager::Command::PlayMedia;
 use serde::Deserialize;
+use crate::video_handler::media_manager::Command::PlayMedia;
 use crate::video_handler::media_manager::VlcManager;
 use crate::web_server::file_action_handler::ActionFormError::{FailedToDecodeForm, FailedToDelete, IoError};
 use crate::web_server::file_action_handler::Actions::{Delete, Download, PairToCard, Play};
-
 
 pub fn route_action_form(mut request: Request, media_manager: &VlcManager) -> Result<Actions, ActionFormError> {
     // Read form data

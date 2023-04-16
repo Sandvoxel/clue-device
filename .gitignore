@@ -6,3 +6,5 @@ Cargo.lock
 logs/
 data/
 upload.sh
+
+config/Config.yaml

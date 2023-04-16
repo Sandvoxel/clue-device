@@ -19,9 +19,9 @@ use multipart::server::{Multipart};
 use tera::{Context, Tera};
 use tiny_http::{Server, Method, Header, StatusCode, Response};
 use log::{debug, error, info};
-use crate::config::config::DeviceConfiguration;
-use crate::logging::logging::setup_logging;
-use crate::rfid::rfid::Rfid;
+use crate::config::setup::DeviceConfiguration;
+use crate::logging::logging_util::setup_logging;
+use crate::rfid::rfid_manger::Rfid;
 
 use crate::video_handler::media_manager::VlcManager;
 use crate::web_server::file_action_handler::{route_action_form};

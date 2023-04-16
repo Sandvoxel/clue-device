@@ -6,7 +6,7 @@
 
 use log4rs::config::RawConfig;
 
-use crate::config::config::DeviceConfiguration;
+use crate::config::setup::DeviceConfiguration;
 
 pub fn setup_logging(device_config: &DeviceConfiguration) -> Result<(),  Box<dyn std::error::Error>> {
 

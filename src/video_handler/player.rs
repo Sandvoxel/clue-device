@@ -7,7 +7,7 @@ use std::{fs, thread};
 use std::env::current_dir;
 
 
-use std::path::{ PathBuf};
+use std::path::{Path, PathBuf};
 
 use std::time::Duration;
 use libmpv::{FileState, Mpv};
@@ -86,6 +86,7 @@ impl Player {
                         .unwrap();
                 }
                 PlayMedia(path) => {
+                    is_playable_by_mpv(path.as_path());
                     self.media_player.playlist_load_files(&[(path.as_path().display().to_string().as_str(), FileState::Replace, None)])
                         .unwrap();
                     self.media_player.unpause().unwrap();
@@ -108,10 +109,13 @@ impl Player {
                             });
                         }
                     });
-
+                    self.media_player.playlist_load_files(&[(self.pair_card_media.as_path().display().to_string().as_str(), FileState::Replace, None)])
+                        .unwrap();
 
                     if rec.recv().is_ok(){
                         no_input.store(false, Ordering::SeqCst);
+                        self.media_player.playlist_load_files(&[(self.idle_media.as_path().display().to_string().as_str(), FileState::Replace, None)])
+                            .unwrap();
                     }
                 }
             }
@@ -119,7 +123,7 @@ impl Player {
     }
 }
 
-fn is_playable_by_mpv(file: &PathBuf) -> bool {
+fn is_playable_by_mpv(file: &Path) -> bool {
     let known_extensions = [
         "mp4", "jpeg", "jpg", "png"
     ];

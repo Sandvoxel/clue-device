@@ -1,7 +1,7 @@
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
-use log::error;
+use std::path::{PathBuf};
+
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 

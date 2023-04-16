@@ -4,7 +4,7 @@ use std::{fmt, fs};
 use std::env::current_dir;
 use std::fs::File;
 use std::io::Read;
-use std::task::ready;
+
 use log::{debug, error};
 use tiny_http::{Header, Request, Response};
 use serde::Deserialize;
@@ -34,6 +34,7 @@ pub fn route_action_form(mut request: Request, media_manager: &VlcManager) -> Re
                     media_manager.send_command(PlayMedia(media_dir)).unwrap_or_else(|error|{
                         error!("Failed to send play command to media manager: {:?}", error);
                     });
+                    request.respond(Response::from_string("played video"))?;
                     Ok(Play)
                 }
                 Download => {

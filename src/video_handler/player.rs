@@ -1,19 +1,18 @@
 
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 use std::{fs, thread};
 use std::env::current_dir;
-use std::fs::metadata;
-use std::os::unix::raw::mode_t;
-use std::path::{ PathBuf};
-use std::ptr::null;
-use std::time::Duration;
-use libmpv::{FileState, Format, Mpv};
-use libmpv::events::{Event, EventContext};
 
-use log::{debug, error, info, warn};
+
+use std::path::{ PathBuf};
+
+use std::time::Duration;
+use libmpv::{FileState, Mpv};
+
+use log::{error, info};
 use crate::video_handler::default_images::{create_idle_image, create_paircard_image, create_startup_file};
 use crate::video_handler::media_manager::{Command};
 use crate::video_handler::media_manager::Command::{Idle, PairCard, PlayMedia};
@@ -29,12 +28,10 @@ pub struct Player{
 impl Player {
     //FIXME use proper error here
     pub fn new(command_channel: (Sender<Command>, Receiver<Command>)) -> Result<Player, libmpv::Error> {
-        if let Ok(mut media_player) = Mpv::new() {
+        if let Ok(media_player) = Mpv::new() {
             media_player.set_property("volume", 15)?;
             media_player.set_property("keep-open", "yes")?;
-
-
-            //FIXME: add logging for player
+            
 
             let files_dir = current_dir().unwrap().join("files");
 
@@ -62,7 +59,7 @@ impl Player {
                 });
             });
 
-            return  Ok(Player {
+            return Ok(Player {
                 media_player,
                 idle_media,
                 pair_card_media,
@@ -74,17 +71,7 @@ impl Player {
     }
 }
 
-fn event_manger(tx: Sender<Command>, mut event_bus: EventContext){
-    while let Some(event) = event_bus.wait_event(0.){
-        match event {
-            Ok(Event::EndFile(r)) => {
-                println!("Exiting! Reason: {:?}", r);
-            }
-            Err(_) => {}
-            _ => {}
-        }
-    }
-}
+
 
 impl Player {
 
@@ -127,16 +114,14 @@ impl Player {
                         no_input.store(false, Ordering::SeqCst);
                     }
                 }
-
             }
         }
     }
 }
 
-fn is_playable_by_vlc(file: &PathBuf) -> bool {
+fn is_playable_by_mpv(file: &PathBuf) -> bool {
     let known_extensions = [
-        "avi", "flv", "m4v", "mkv", "mov", "mp4", "mpeg", "mpg", "ogg", "ogv", "webm", "wmv",
-        "bmp", "gif", "jpeg", "jpg", "png", "tiff", "tif"
+        "mp4", "jpeg", "jpg", "png"
     ];
 
     match file.extension() {

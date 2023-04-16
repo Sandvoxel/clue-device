@@ -13,6 +13,7 @@ use log::{error, info};
 use mfrc522::{Initialized, Mfrc522, WithNssDelay};
 use sled::Db;
 use crate::video_handler::media_manager::Command;
+use crate::video_handler::media_manager::Command::PlayMedia;
 
 pub struct Rfid {
     vlc_command_channel: Sender<Command>,
@@ -50,9 +51,11 @@ impl Rfid {
     }
 
     pub fn start_rfid_thread(&self) {
+
+        let _tx = self.vlc_command_channel.clone();
         if is_raspberry_pi() {
             let tx = self.vlc_command_channel.clone();
-            thread::spawn(||{
+            thread::spawn(move ||{
                 let mut spi = Spidev::open("/dev/spidev0.0").unwrap();
                 let options = SpidevOptions::new()
                     .max_speed_hz(1_000_000)
@@ -83,7 +86,7 @@ impl Rfid {
                     })
                 });
 
-                println!("VERSION: 0x{:x}", vers);
+                info!("VERSION: 0x{:x}", vers);
 
                 assert!(vers == 0x91 || vers == 0x92);
 
@@ -92,28 +95,36 @@ impl Rfid {
                     const TAG_UID: [u8; 4] = [128, 170, 179, 76];
 
                     if let Ok(atqa) = mfrc522.reqa() {
+                        info!("Test");
                         if let Ok(uid) = mfrc522.select(&atqa) {
-                            println!("UID: {:?}", uid.as_bytes());
+                            info!("UID: {:?}", uid.as_bytes());
 
                             if uid.as_bytes() == &CARD_UID {
-                                println!("CARD");
+                                info!("CARD");
                             } else if uid.as_bytes() == &TAG_UID {
-                                println!("TAG");
+                                info!("TAG");
                             }
+
+                            let media = current_dir().unwrap().join("files/Img 4541.mp4");
+
+                            tx.send(PlayMedia(media)).unwrap();
 
                             handle_authenticate(&mut mfrc522, &uid, |m| {
                                 let data = m.mf_read(1).unwrap_or_else(|err|{
                                     error!("Failed to read card: {:?}", err);
                                     [0; 16]
                                 });
-                                println!("read {:?}", data);
+                                info!("read {:?}", data);
                                 Ok(())
-                            })
-                                .ok();
+                            }).ok();
+                            info!("Card read waiting 60s");
+                            thread::sleep(Duration::from_secs(5));
+                            info!("Finished waiting");
+
                         }
                     }
 
-                    thread::sleep(Duration::from_secs(60));
+                    thread::sleep(Duration::from_millis(250));
                 }
 
             });
@@ -141,7 +152,7 @@ fn handle_authenticate<E, SPI, NSS, D, F>(
     if mfrc522.mf_authenticate(uid, 1, &key).is_ok() {
         action(mfrc522)?;
     } else {
-        println!("Could not authenticate");
+        error!("Could not authenticate");
     }
 
     mfrc522.hlta().unwrap_or_else(|err|{
@@ -155,8 +166,29 @@ fn handle_authenticate<E, SPI, NSS, D, F>(
 
 #[cfg(all(target_os = "linux", target_arch = "arm"))]
 fn is_raspberry_pi() -> bool {
-    // Add your Linux-specific Raspberry Pi detection logic here.
-    // You can use the previous example that checks the /proc/cpuinfo file.
+    let cpuinfo = fs::read_to_string("/proc/cpuinfo").expect("Failed to read /proc/cpuinfo");
+
+    let is_raspberry_pi = cpuinfo
+        .lines()
+        .filter_map(|line| {
+            let mut parts = line.split(':');
+            let key = parts.next()?.trim();
+            let value = parts.next()?.trim();
+
+            if key == "Hardware" {
+                Some(value)
+            } else {
+                None
+            }
+        })
+        .any(|hardware| {
+            hardware.contains("BCM2708")
+                || hardware.contains("BCM2709")
+                || hardware.contains("BCM2710")
+                || hardware.contains("BCM2835")
+        });
+
+    is_raspberry_pi
 }
 
 #[cfg(not(all(target_os = "linux", target_arch = "arm")))]

@@ -1,11 +1,11 @@
-use std::env::current_dir;
-use std::fs::File;
-use std::{env, io};
-use std::io::{BufReader, Read, stdout};
-use std::net::Ipv4Addr;
-use log::{info, LevelFilter};
+
+
+
+
+
+
 use log4rs::config::RawConfig;
-use serde_urlencoded::from_reader;
+
 use crate::config::config::DeviceConfiguration;
 
 pub fn setup_logging(device_config: &DeviceConfiguration) -> Result<(),  Box<dyn std::error::Error>> {

@@ -14,6 +14,7 @@ use std::fs::{File};
 use std::io::{Read};
 
 
+
 use multipart::server::{Multipart};
 use tera::{Context, Tera};
 use tiny_http::{Server, Method, Header, StatusCode, Response};
@@ -21,9 +22,9 @@ use log::{debug, error, info};
 use crate::config::config::DeviceConfiguration;
 use crate::logging::logging::setup_logging;
 use crate::rfid::rfid::Rfid;
-use crate::video_handler::media_manager::Command::{PlayMedia};
+
 use crate::video_handler::media_manager::VlcManager;
-use crate::web_server::file_action_handler::{ActionFormError, route_action_form};
+use crate::web_server::file_action_handler::{route_action_form};
 
 
 

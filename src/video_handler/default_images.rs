@@ -1,6 +1,6 @@
 use std::env::current_dir;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 
 use local_ip_address::local_ip;
 use log::{error, info};
@@ -64,7 +64,7 @@ pub fn create_idle_image() -> PathBuf {
         };
     }
 
-    return idle_image_path.to_path_buf();
+    idle_image_path
 }
 
 pub fn create_paircard_image() -> PathBuf {
@@ -82,6 +82,6 @@ pub fn create_paircard_image() -> PathBuf {
         };
     }
 
-    pair_card_image.to_path_buf()
+    pair_card_image
 }
 

@@ -2,13 +2,13 @@ appenders:
   stdout:
     kind: console
     encoder:
-      pattern: "{d(%Y-%m-%dT%H:%M:%S%.3f%z)} Device ID: {device_id} [{h({l})}]: {m}{n}"
+      pattern: "{d(%Y-%m-%dT%H:%M:%S%.3f%z)} {device_id} [{h({l})}]: {m}{n}"
 
   rolling_file:
     kind: rolling_file
     path: "logs/app.{device_id}.log"
     encoder:
-      pattern: "{d(%Y-%m-%dT%H:%M:%S%.3f%z)} Device ID: {device_id} [{h({l})}]: {m}{n}"
+      pattern: "{d(%Y-%m-%dT%H:%M:%S%.3f%z)} {device_id} [{h({l})}]: {m}{n}"
     policy:
       kind: compound
       trigger:

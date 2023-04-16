@@ -42,6 +42,8 @@ fn main() {
 
     let rfid = Rfid::new(media_manager.get_command_channel());
 
+    rfid.start_rfid_thread();
+
     let mut tera = Tera::default();
 
 

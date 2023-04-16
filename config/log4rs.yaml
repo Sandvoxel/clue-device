@@ -6,7 +6,7 @@ appenders:
 
   rolling_file:
     kind: rolling_file
-    path: "logs/app.log"
+    path: "logs/app.{device_id}.log"
     encoder:
       pattern: "{d(%Y-%m-%dT%H:%M:%S%.3f%z)} Device ID: {device_id} [{h({l})}]: {m}{n}"
     policy:
@@ -18,7 +18,7 @@ appenders:
         kind: fixed_window
         base: 0
         count: 10
-        pattern: "logs/app.{}.log"
+        pattern: "logs/app.{device_id}.{}.log"
 
 root:
   level: info

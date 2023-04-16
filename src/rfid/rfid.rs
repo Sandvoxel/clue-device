@@ -1,8 +1,16 @@
 use std::env::current_dir;
-use std::fs;
+use std::{fs, thread};
 use std::sync::mpsc::Sender;
+use std::time::Duration;
+use linux_embedded_hal::{Pin, Spidev};
+use linux_embedded_hal::spidev::{SpidevOptions, SpiModeFlags};
+use linux_embedded_hal::sysfs_gpio::Direction;
+use embedded_hal::blocking::spi::{Transfer as SpiTransfer, Write as SpiWrite};
+use anyhow::Result;
+
+
 use log::{error, info};
-use mfrc522::Mfrc522;
+use mfrc522::{Initialized, Mfrc522, WithNssDelay};
 use sled::Db;
 use crate::video_handler::media_manager::Command;
 
@@ -40,5 +48,119 @@ impl Rfid {
             sled_database
         }
     }
+
+    pub fn start_rfid_thread(&self) {
+        if is_raspberry_pi() {
+            let tx = self.vlc_command_channel.clone();
+            thread::spawn(||{
+                let mut spi = Spidev::open("/dev/spidev0.0").unwrap();
+                let options = SpidevOptions::new()
+                    .max_speed_hz(1_000_000)
+                    .mode(SpiModeFlags::SPI_MODE_0)
+                    .build();
+                spi.configure(&options).unwrap();
+
+                // software-controlled chip select pin
+                let pin = Pin::new(22);
+                pin.export().unwrap();
+                while !pin.is_exported() {}
+                thread::sleep(Duration::from_millis(25));
+                pin.set_direction(Direction::Out).unwrap();
+                pin.set_value(1).unwrap();
+
+                // The `with_nss` method provides a GPIO pin to the driver for software controlled chip select.
+                let mut mfrc522 = Mfrc522::new(spi).with_nss(pin).init().unwrap_or_else(|err|{
+                    error!("Failed to open rfid reader: {:?}", err);
+                    panic!("This is non recoverable");
+                });
+
+                let vers = mfrc522.version().unwrap_or_else(|err|{
+                    error!("Failed to read verion from rfid board: {:?}",err);
+                    error!("Will try again: {:?}",err);
+                    mfrc522.version().unwrap_or_else(|err|{
+                        error!("Failed to read verion from rfid board x2 Fatal: {:?}",err);
+                        panic!();
+                    })
+                });
+
+                println!("VERSION: 0x{:x}", vers);
+
+                assert!(vers == 0x91 || vers == 0x92);
+
+                loop {
+                    const CARD_UID: [u8; 4] = [34, 246, 178, 171];
+                    const TAG_UID: [u8; 4] = [128, 170, 179, 76];
+
+                    if let Ok(atqa) = mfrc522.reqa() {
+                        if let Ok(uid) = mfrc522.select(&atqa) {
+                            println!("UID: {:?}", uid.as_bytes());
+
+                            if uid.as_bytes() == &CARD_UID {
+                                println!("CARD");
+                            } else if uid.as_bytes() == &TAG_UID {
+                                println!("TAG");
+                            }
+
+                            handle_authenticate(&mut mfrc522, &uid, |m| {
+                                let data = m.mf_read(1).unwrap_or_else(|err|{
+                                    error!("Failed to read card: {:?}", err);
+                                    [0; 16]
+                                });
+                                println!("read {:?}", data);
+                                Ok(())
+                            })
+                                .ok();
+                        }
+                    }
+
+                    thread::sleep(Duration::from_secs(60));
+                }
+
+            });
+        } else {
+            error!("Not a raspberry pi not starting rfid reader");
+        }
+    }
+
+
+
+}
+fn handle_authenticate<E, SPI, NSS, D, F>(
+    mfrc522: &mut Mfrc522<SPI, NSS, D, Initialized>,
+    uid: &mfrc522::Uid,
+    action: F,
+) -> Result<()>
+    where
+        SPI: SpiTransfer<u8, Error = E> + SpiWrite<u8, Error = E>,
+        Mfrc522<SPI, NSS, D, Initialized>: WithNssDelay,
+        F: FnOnce(&mut Mfrc522<SPI, NSS, D, Initialized>) -> Result<()>,
+        E: std::fmt::Debug + Sync + Send + 'static,
+{
+    // Use *default* key, this should work on new/empty cards
+    let key = [0xFF; 6];
+    if mfrc522.mf_authenticate(uid, 1, &key).is_ok() {
+        action(mfrc522)?;
+    } else {
+        println!("Could not authenticate");
+    }
+
+    mfrc522.hlta().unwrap_or_else(|err|{
+        error!("Failed rfid: {:?}", err);
+    });
+    mfrc522.stop_crypto1().unwrap_or_else(|err|{
+        error!("Failed rfid: {:?}", err);
+    });
+    Ok(())
+}
+
+#[cfg(all(target_os = "linux", target_arch = "arm"))]
+fn is_raspberry_pi() -> bool {
+    // Add your Linux-specific Raspberry Pi detection logic here.
+    // You can use the previous example that checks the /proc/cpuinfo file.
+}
+
+#[cfg(not(all(target_os = "linux", target_arch = "arm")))]
+fn is_raspberry_pi() -> bool {
+    false
 }
 

@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
-use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
+use std::sync::mpsc::{channel, Receiver, Sender, SendError, TryRecvError};
 use std::time::Duration;
 use linux_embedded_hal::{Pin, Spidev};
 use linux_embedded_hal::spidev::{SpidevOptions, SpiModeFlags};
@@ -15,14 +15,16 @@ use anyhow::Result;
 use log::{error, info};
 use mfrc522::{Initialized, Mfrc522, WithNssDelay};
 use mfrc522::error::Error;
-use sled::Db;
+use serde::de::Unexpected::Str;
+use sled::{Db, IVec};
+use uuid::{Bytes, Uuid};
 use crate::config::setup::DeviceConfiguration;
 use crate::video_handler::media_manager::Command;
 use crate::video_handler::media_manager::Command::PlayMedia;
 
 #[derive(Debug, Clone)]
 enum RfidCommands {
-    PairCard(PathBuf)
+    PairCard(PathBuf, Sender<()>)
 }
 
 pub struct Rfid {
@@ -34,6 +36,28 @@ pub struct Rfid {
 
 impl Rfid {
     pub fn pair_card(&self, path: &Path){
+        let pair_confirmation = channel::<()>();
+
+
+        match self.vlc_command_channel.send(Command::PairCard(pair_confirmation.1)) {
+            Ok(_) => {
+                info!("Sent command to vlc to display pair screen");
+                match self.command_channel.send(RfidCommands::PairCard(path.to_path_buf(), pair_confirmation.0)) {
+                    Ok(_) => {
+                        info!("Sent command to rfid reader pair a card");
+                    }
+                    Err(err) => {
+                        error!("Failed to send command to rfid reader: {:?}", err);
+                        if let Err(err) = self.vlc_command_channel.send(Command::Idle) {
+                            error!("Failed to send message to send vlc back to idle screen");
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                error!("Failed to send command to vlc: {:?}", err);
+            }
+        }
 
     }
 }
@@ -72,7 +96,8 @@ impl Rfid {
         if is_raspberry_pi() {
             let clue_timeout = self.device_configuration.clue_timeout;
             let tx = self.vlc_command_channel.clone();
-            let retrys = 5;
+            let database = self.sled_database.clone();
+            let retrys = self.device_configuration.rfid_retrys;
             thread::spawn(move || {
                 for i in 0..retrys {
                     info!("Starting rfid reader ({} of {})", i, retrys-1);
@@ -118,35 +143,39 @@ impl Rfid {
                                     info!("UID: {:?}", uid.as_bytes());
 
                                     match commands_rx.try_recv() {
-                                        Ok(message) => info!("Received: {:?}", message),
-                                        Err(TryRecvError::Empty) => info!("No message received"),
+                                        Ok(message) => {
+                                            match message { RfidCommands::PairCard(path, callback) => {
+
+                                                if let Ok(_) = database.insert(slice_to_uuid(uid.as_bytes()).to_string(), path.display().to_string().as_str()) {
+                                                    info!("Card written waiting {}S",clue_timeout);
+                                                    thread::sleep(Duration::from_secs(clue_timeout));
+                                                }
+                                            }}
+                                        },
+                                        Err(TryRecvError::Empty) => {
+
+                                            if let Ok(Some(data)) = database.get(slice_to_uuid(uid.as_bytes()).to_string()) {
+                                                let bytes: &[u8] = data.as_ref();
+                                                if let Ok(path) = std::str::from_utf8(bytes){
+                                                    let media = PathBuf::from(path);
+                                                    let f = File::open(&media).unwrap();
+                                                    let size = f.metadata().unwrap().len();
+                                                    let reader = BufReader::new(f);
+
+                                                    let mp4 = mp4::Mp4Reader::read_header(reader, size).unwrap();
+
+                                                    tx.send(PlayMedia(media)).unwrap();
+                                                    let wait = mp4.duration().as_secs() + clue_timeout;
+                                                    info!("Card read waiting {}S",wait);
+                                                    thread::sleep(Duration::from_secs(wait));
+                                                    info!("Finished waiting");
+                                                }
+                                            } else {
+                                                info!("No database entry found for card: {:?}", uid.as_bytes());
+                                            }
+                                        },
                                         Err(TryRecvError::Disconnected) => error!("Channel disconnected"),
                                     }
-
-                                    let media = current_dir().unwrap().join("files/Img 4541.mp4");
-
-                                    let f = File::open(&media).unwrap();
-                                    let size = f.metadata().unwrap().len();
-                                    let reader = BufReader::new(f);
-
-                                    let mp4 = mp4::Mp4Reader::read_header(reader, size).unwrap();
-
-                                    tx.send(PlayMedia(media)).unwrap();
-
-
-                                    /*handle_authenticate(&mut mfrc522, &uid, |m| {
-                                        let data = m.mf_read(1).unwrap_or_else(|err|{
-                                            error!("Failed to read card: {:?}", err);
-                                            [0; 16]
-                                        });
-                                        info!("read {:?}", data);
-                                        Ok(())
-                                    }).ok();*/
-                                    let wait = mp4.duration().as_secs() + clue_timeout;
-                                    info!("Card read waiting {}S",wait);
-                                    thread::sleep(Duration::from_secs(wait));
-                                    info!("Finished waiting");
-
                                 }
                             }
                             Err(Error::LostCommunication) => {
@@ -172,36 +201,22 @@ impl Rfid {
             error!("Not a raspberry pi not starting rfid reader");
         }
     }
-
-
-
 }
-fn handle_authenticate<E, SPI, NSS, D, F>(
-    mfrc522: &mut Mfrc522<SPI, NSS, D, Initialized>,
-    uid: &mfrc522::Uid,
-    action: F,
-) -> Result<()>
-    where
-        SPI: SpiTransfer<u8, Error = E> + SpiWrite<u8, Error = E>,
-        Mfrc522<SPI, NSS, D, Initialized>: WithNssDelay,
-        F: FnOnce(&mut Mfrc522<SPI, NSS, D, Initialized>) -> Result<()>,
-        E: std::fmt::Debug + Sync + Send + 'static,
-{
-    // Use *default* key, this should work on new/empty cards
-    let key = [0xFF; 6];
-    if mfrc522.mf_authenticate(uid, 1, &key).is_ok() {
-        action(mfrc522)?;
-    } else {
-        error!("Could not authenticate");
-    }
 
-    mfrc522.hlta().unwrap_or_else(|err|{
-        error!("Failed rfid: {:?}", err);
-    });
-    mfrc522.stop_crypto1().unwrap_or_else(|err|{
-        error!("Failed rfid: {:?}", err);
-    });
-    Ok(())
+fn slice_to_uuid(data: &[u8]) -> Uuid {
+    let array: [u8; 16] = data
+        .iter()
+        .cloned()
+        .chain(std::iter::repeat(0))
+        .take(16)
+        .collect::<Vec<u8>>()
+        .try_into()
+        .unwrap_or_else(|_| {
+            error!("Failed to convert bytes into correct format");
+            [0; 16]
+        });
+
+    Uuid::from_bytes(Bytes::from(array))
 }
 
 #[cfg(all(target_os = "linux", target_arch = "arm"))]

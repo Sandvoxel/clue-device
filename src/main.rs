@@ -93,7 +93,7 @@ fn main() {
                         }
                     },
                     "/action" => {
-                        match route_action_form(request, &media_manager) {
+                        match route_action_form(request, &media_manager, &rfid) {
                             Ok(action) => {
                                 info!("Media Action Form routed successfully. Action preformed : {:?}", action)
                             }

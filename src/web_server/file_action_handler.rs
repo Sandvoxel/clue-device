@@ -8,12 +8,13 @@ use std::io::Read;
 use log::{debug, error};
 use tiny_http::{Header, Request, Response};
 use serde::Deserialize;
+use crate::rfid::rfid_manger::Rfid;
 use crate::video_handler::media_manager::Command::PlayMedia;
 use crate::video_handler::media_manager::VlcManager;
 use crate::web_server::file_action_handler::ActionFormError::{FailedToDecodeForm, FailedToDelete, IoError};
 use crate::web_server::file_action_handler::Actions::{Delete, Download, PairToCard, Play};
 
-pub fn route_action_form(mut request: Request, media_manager: &VlcManager) -> Result<Actions, ActionFormError> {
+pub fn route_action_form(mut request: Request, media_manager: &VlcManager, rfid_manger: &Rfid) -> Result<Actions, ActionFormError> {
     // Read form data
     let mut raw_form_data = String::new();
     request.as_reader().read_to_string(&mut raw_form_data).unwrap();
@@ -27,6 +28,7 @@ pub fn route_action_form(mut request: Request, media_manager: &VlcManager) -> Re
 
             match form_data.action {
                 PairToCard => {
+                    rfid_manger.pair_card(media_dir.as_path());
                     request.respond(Response::from_string("paired card"))?;
                     Ok(PairToCard)
                 }

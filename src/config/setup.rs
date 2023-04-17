@@ -8,7 +8,8 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DeviceConfiguration {
     pub device_uuid: String,
-    pub clue_timeout: u64
+    pub clue_timeout: u64,
+    pub rfid_retrys: u32
 }
 
 
@@ -16,7 +17,8 @@ impl DeviceConfiguration {
     pub fn new() -> DeviceConfiguration {
         DeviceConfiguration{
             device_uuid: Uuid::new_v4().to_string(),
-            clue_timeout: 5
+            clue_timeout: 5,
+            rfid_retrys: 5
         }
     }
 

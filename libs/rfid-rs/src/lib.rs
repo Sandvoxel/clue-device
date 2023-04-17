@@ -611,7 +611,6 @@ where
         )
         .map_err(Error::Spi)?;
 
-        // TODO timeout when connection to the MFRC522 is lost (?)
         // wait for transmission + reception to complete
         let mut timeout = 0;
         loop {

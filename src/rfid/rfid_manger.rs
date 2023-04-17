@@ -1,6 +1,10 @@
 use std::env::current_dir;
 use std::{fs, thread};
-use std::sync::mpsc::Sender;
+use std::fs::File;
+use std::io::BufReader;
+use std::path::{Path, PathBuf};
+use std::sync::mpsc;
+use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::time::Duration;
 use linux_embedded_hal::{Pin, Spidev};
 use linux_embedded_hal::spidev::{SpidevOptions, SpiModeFlags};
@@ -8,26 +12,34 @@ use linux_embedded_hal::sysfs_gpio::Direction;
 use embedded_hal::blocking::spi::{Transfer as SpiTransfer, Write as SpiWrite};
 use anyhow::Result;
 
-
 use log::{error, info};
 use mfrc522::{Initialized, Mfrc522, WithNssDelay};
+use mfrc522::error::Error;
 use sled::Db;
+use crate::config::setup::DeviceConfiguration;
 use crate::video_handler::media_manager::Command;
 use crate::video_handler::media_manager::Command::PlayMedia;
 
+#[derive(Debug, Clone)]
+enum RfidCommands {
+    PairCard(PathBuf)
+}
+
 pub struct Rfid {
     vlc_command_channel: Sender<Command>,
-    sled_database: Db
+    sled_database: Db,
+    device_configuration: DeviceConfiguration,
+    command_channel: Sender<RfidCommands>
 }
 
 impl Rfid {
-    pub fn pair_card(&self) {
-        self.sled_database.insert("","").unwrap();
+    pub fn pair_card(&self, path: &Path){
+
     }
 }
 
 impl Rfid {
-    pub fn new(vlc_command_channel: Sender<Command>) -> Rfid {
+    pub fn new(vlc_command_channel: Sender<Command>, device_configuration: DeviceConfiguration) -> Rfid {
         let database_dir = current_dir().unwrap().join("data");
 
         if !database_dir.is_dir() {
@@ -44,89 +56,117 @@ impl Rfid {
         });
 
 
-        Rfid {
+        let commands = channel();
+        let rfid = Rfid {
             vlc_command_channel,
-            sled_database
-        }
+            sled_database,
+            device_configuration,
+            command_channel: commands.0
+        };
+
+        rfid.start_rfid_thread(commands.1);
+        rfid
     }
 
-    pub fn start_rfid_thread(&self) {
-
-        let _tx = self.vlc_command_channel.clone();
+    fn start_rfid_thread(&self,commands_rx: Receiver<RfidCommands>) {
         if is_raspberry_pi() {
+            let clue_timeout = self.device_configuration.clue_timeout;
             let tx = self.vlc_command_channel.clone();
-            thread::spawn(move ||{
-                let mut spi = Spidev::open("/dev/spidev0.0").unwrap();
-                let options = SpidevOptions::new()
-                    .max_speed_hz(1_000_000)
-                    .mode(SpiModeFlags::SPI_MODE_0)
-                    .build();
-                spi.configure(&options).unwrap();
+            let retrys = 5;
+            thread::spawn(move || {
+                for i in 0..retrys {
+                    info!("Starting rfid reader ({} of {})", i, retrys-1);
+                    let mut spi = Spidev::open("/dev/spidev0.0").unwrap();
+                    let options = SpidevOptions::new()
+                        .max_speed_hz(1_000_000)
+                        .mode(SpiModeFlags::SPI_MODE_0)
+                        .build();
+                    spi.configure(&options).unwrap();
 
-                // software-controlled chip select pin
-                let pin = Pin::new(22);
-                pin.export().unwrap();
-                while !pin.is_exported() {}
-                thread::sleep(Duration::from_millis(25));
-                pin.set_direction(Direction::Out).unwrap();
-                pin.set_value(1).unwrap();
+                    // software-controlled chip select pin
+                    let pin = Pin::new(22);
+                    pin.export().unwrap();
+                    while !pin.is_exported() {}
+                    thread::sleep(Duration::from_millis(25));
+                    pin.set_direction(Direction::Out).unwrap();
+                    pin.set_value(1).unwrap();
 
-                // The `with_nss` method provides a GPIO pin to the driver for software controlled chip select.
-                let mut mfrc522 = Mfrc522::new(spi).with_nss(pin).init().unwrap_or_else(|err|{
-                    error!("Failed to open rfid reader: {:?}", err);
-                    panic!("This is non recoverable");
-                });
+                    // The `with_nss` method provides a GPIO pin to the driver for software controlled chip select.
+                    let mut mfrc522 = Mfrc522::new(spi).with_nss(pin).init().unwrap_or_else(|err|{
+                        error!("Failed to open rfid reader: {:?}", err);
+                        panic!("This is non recoverable");
+                    });
 
-                let vers = mfrc522.version().unwrap_or_else(|err|{
-                    error!("Failed to read verion from rfid board: {:?}",err);
-                    error!("Will try again: {:?}",err);
-                    mfrc522.version().unwrap_or_else(|err|{
-                        error!("Failed to read verion from rfid board x2 Fatal: {:?}",err);
-                        panic!();
-                    })
-                });
+                    let vers = mfrc522.version().unwrap_or_else(|err|{
+                        error!("Failed to read verion from rfid board: {:?}",err);
+                        error!("Will try again: {:?}",err);
+                        mfrc522.version().unwrap_or_else(|err|{
+                            error!("Failed to read verion from rfid board x2 Fatal: {:?}",err);
+                            panic!();
+                        })
+                    });
 
-                info!("VERSION: 0x{:x}", vers);
 
-                assert!(vers == 0x91 || vers == 0x92);
+                    info!("Mfrc522 VERSION: 0x{:x}", vers);
 
-                loop {
-                    const CARD_UID: [u8; 4] = [34, 246, 178, 171];
-                    const TAG_UID: [u8; 4] = [128, 170, 179, 76];
+                    assert!(vers == 0x91 || vers == 0x92);
 
-                    if let Ok(atqa) = mfrc522.reqa() {
-                        info!("Test");
-                        if let Ok(uid) = mfrc522.select(&atqa) {
-                            info!("UID: {:?}", uid.as_bytes());
+                    loop {
+                        match mfrc522.reqa() {
+                            Ok(atqa) =>{
+                                if let Ok(uid) = mfrc522.select(&atqa) {
+                                    info!("UID: {:?}", uid.as_bytes());
 
-                            if uid.as_bytes() == &CARD_UID {
-                                info!("CARD");
-                            } else if uid.as_bytes() == &TAG_UID {
-                                info!("TAG");
+                                    match commands_rx.try_recv() {
+                                        Ok(message) => info!("Received: {:?}", message),
+                                        Err(TryRecvError::Empty) => info!("No message received"),
+                                        Err(TryRecvError::Disconnected) => error!("Channel disconnected"),
+                                    }
+
+                                    let media = current_dir().unwrap().join("files/Img 4541.mp4");
+
+                                    let f = File::open(&media).unwrap();
+                                    let size = f.metadata().unwrap().len();
+                                    let reader = BufReader::new(f);
+
+                                    let mp4 = mp4::Mp4Reader::read_header(reader, size).unwrap();
+
+                                    tx.send(PlayMedia(media)).unwrap();
+
+
+                                    /*handle_authenticate(&mut mfrc522, &uid, |m| {
+                                        let data = m.mf_read(1).unwrap_or_else(|err|{
+                                            error!("Failed to read card: {:?}", err);
+                                            [0; 16]
+                                        });
+                                        info!("read {:?}", data);
+                                        Ok(())
+                                    }).ok();*/
+                                    let wait = mp4.duration().as_secs() + clue_timeout;
+                                    info!("Card read waiting {}S",wait);
+                                    thread::sleep(Duration::from_secs(wait));
+                                    info!("Finished waiting");
+
+                                }
                             }
+                            Err(Error::LostCommunication) => {
+                                break;
+                            }
+                            _ => {}
+                        }
 
-                            let media = current_dir().unwrap().join("files/Img 4541.mp4");
 
-                            tx.send(PlayMedia(media)).unwrap();
-
-                            handle_authenticate(&mut mfrc522, &uid, |m| {
-                                let data = m.mf_read(1).unwrap_or_else(|err|{
-                                    error!("Failed to read card: {:?}", err);
-                                    [0; 16]
-                                });
-                                info!("read {:?}", data);
-                                Ok(())
-                            }).ok();
-                            info!("Card read waiting 60s");
-                            thread::sleep(Duration::from_secs(5));
-                            info!("Finished waiting");
+                        if let Ok(atqa) = mfrc522.reqa() {
 
                         }
+
+                        thread::sleep(Duration::from_millis(250));
                     }
 
-                    thread::sleep(Duration::from_millis(250));
+                    error!("RFID communication lost waiting 5 seconds then restarting");
+                    thread::sleep(Duration::from_secs(5));
                 }
-
+                error!("Rfid reader not found.");
             });
         } else {
             error!("Not a raspberry pi not starting rfid reader");

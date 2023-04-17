@@ -5,16 +5,18 @@ use std::path::{PathBuf};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DeviceConfiguration {
-    pub device_uuid: String
+    pub device_uuid: String,
+    pub clue_timeout: u64
 }
 
 
 impl DeviceConfiguration {
     pub fn new() -> DeviceConfiguration {
         DeviceConfiguration{
-            device_uuid: Uuid::new_v4().to_string()
+            device_uuid: Uuid::new_v4().to_string(),
+            clue_timeout: 5
         }
     }
 

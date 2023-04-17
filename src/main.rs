@@ -41,9 +41,7 @@ fn main() {
 
     let media_manager = VlcManager::new();
 
-    let rfid = Rfid::new(media_manager.get_command_channel());
-
-    rfid.start_rfid_thread();
+    let rfid = Rfid::new(media_manager.get_command_channel(), dev_config.clone());
 
     let mut tera = Tera::default();
 

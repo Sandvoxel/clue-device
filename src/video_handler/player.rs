@@ -93,7 +93,7 @@ impl Player {
                     self.media_player.playlist_load_files(&[(self.idle_media.as_path().display().to_string().as_str(), FileState::AppendPlay, None)])
                         .unwrap();
                 }
-                PairCard(rec) => {
+                PairCard => {
 
                     let no_input = Arc::new(AtomicBool::new(true));
 
@@ -111,12 +111,7 @@ impl Player {
                     });
                     self.media_player.playlist_load_files(&[(self.pair_card_media.as_path().display().to_string().as_str(), FileState::Replace, None)])
                         .unwrap();
-
-                    if rec.recv().is_ok(){
-                        no_input.store(false, Ordering::SeqCst);
-                        self.media_player.playlist_load_files(&[(self.idle_media.as_path().display().to_string().as_str(), FileState::Replace, None)])
-                            .unwrap();
-                    }
+                    no_input.store(false, Ordering::SeqCst);
                 }
             }
         }

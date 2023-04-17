@@ -20,11 +20,11 @@ use sled::{Db, IVec};
 use uuid::{Bytes, Uuid};
 use crate::config::setup::DeviceConfiguration;
 use crate::video_handler::media_manager::Command;
-use crate::video_handler::media_manager::Command::PlayMedia;
+use crate::video_handler::media_manager::Command::{Idle, PlayMedia};
 
 #[derive(Debug, Clone)]
 enum RfidCommands {
-    PairCard(PathBuf, Sender<()>)
+    PairCard(PathBuf)
 }
 
 pub struct Rfid {
@@ -39,10 +39,10 @@ impl Rfid {
         let pair_confirmation = channel::<()>();
 
 
-        match self.vlc_command_channel.send(Command::PairCard(pair_confirmation.1)) {
+        match self.vlc_command_channel.send(Command::PairCard()) {
             Ok(_) => {
                 info!("Sent command to vlc to display pair screen");
-                match self.command_channel.send(RfidCommands::PairCard(path.to_path_buf(), pair_confirmation.0)) {
+                match self.command_channel.send(RfidCommands::PairCard(path.to_path_buf())) {
                     Ok(_) => {
                         info!("Sent command to rfid reader pair a card");
                     }
@@ -144,10 +144,13 @@ impl Rfid {
 
                                     match commands_rx.try_recv() {
                                         Ok(message) => {
-                                            match message { RfidCommands::PairCard(path, callback) => {
+                                            match message { RfidCommands::PairCard(path) => {
 
                                                 if let Ok(_) = database.insert(slice_to_uuid(uid.as_bytes()).to_string(), path.display().to_string().as_str()) {
                                                     info!("Card written waiting {}S",clue_timeout);
+                                                    tx.send(Idle).unwrap_or_else(|err|{
+                                                        error!("Failed send idle screen");
+                                                    });
                                                     thread::sleep(Duration::from_secs(clue_timeout));
                                                 }
                                             }}

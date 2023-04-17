@@ -11,7 +11,7 @@ use std::thread::JoinHandle;
 pub enum Command {
     Idle,
     PlayMedia(PathBuf),
-    PairCard(Receiver<()>),
+    PairCard,
 }
 
 pub struct VlcManager {

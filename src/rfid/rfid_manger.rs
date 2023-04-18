@@ -240,10 +240,7 @@ fn is_raspberry_pi() -> bool {
             }
         })
         .any(|hardware| {
-            hardware.contains("BCM2708")
-                || hardware.contains("BCM2709")
-                || hardware.contains("BCM2710")
-                || hardware.contains("BCM2835")
+            hardware.contains("BCM")
         });
 
     is_raspberry_pi

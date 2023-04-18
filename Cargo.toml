@@ -26,7 +26,6 @@ mp4 = "0.13.0"
 [dependencies.mfrc522]
 path = "./libs/rfid-rs"
 version = "0.5.0"
-feature = ["std"]
 
 [dependencies.multipart]
 path = "./libs/multipart"
@@ -40,3 +39,7 @@ features = [
     "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
 ]
 
+
+[package.metadata.cross.build]
+default-target = "armv7-unknown-linux-gnueabihf"
+pre-build = ["apt-get update", "apt-get install libmpv-dev"] # can also be the path to a file to run"]

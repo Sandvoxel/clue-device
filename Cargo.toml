@@ -40,6 +40,3 @@ features = [
 ]
 
 
-[package.metadata.cross.build]
-default-target = "armv7-unknown-linux-gnueabihf"
-pre-build = ["apt-get update", "apt-get install libmpv-dev"] # can also be the path to a file to run"]

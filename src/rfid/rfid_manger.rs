@@ -39,7 +39,7 @@ impl Rfid {
         let pair_confirmation = channel::<()>();
 
 
-        match self.vlc_command_channel.send(Command::PairCard()) {
+        match self.vlc_command_channel.send(Command::PairCard) {
             Ok(_) => {
                 info!("Sent command to vlc to display pair screen");
                 match self.command_channel.send(RfidCommands::PairCard(path.to_path_buf())) {

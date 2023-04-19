@@ -124,9 +124,7 @@ fn main() {
             _ => {}
         }
 
-        let mut file = File::open(project_dir.as_path().join("pages").join("index.html")).unwrap();
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).unwrap();
+        let contents = include_str!("../pages/index.html");
 
         tera.add_raw_template("index.html", &contents).expect("TODO: panic message");
 

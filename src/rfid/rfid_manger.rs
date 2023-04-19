@@ -36,9 +36,6 @@ pub struct Rfid {
 
 impl Rfid {
     pub fn pair_card(&self, path: &Path){
-        let pair_confirmation = channel::<()>();
-
-
         match self.vlc_command_channel.send(Command::PairCard) {
             Ok(_) => {
                 info!("Sent command to vlc to display pair screen");
@@ -101,7 +98,14 @@ impl Rfid {
             thread::spawn(move || {
                 for i in 0..retrys {
                     info!("Starting rfid reader ({} of {})", i, retrys-1);
-                    let mut spi = Spidev::open("/dev/spidev0.0").unwrap();
+                    let spi = Spidev::open("/dev/spidev0.0");
+                    if spi.is_err() {
+                        error!("Failed to open spi device waiting 3 seconds then retrying");
+                        thread::sleep(Duration::from_secs(3));
+                        break;
+                    }
+                    let mut spi = spi.unwrap();
+
                     let options = SpidevOptions::new()
                         .max_speed_hz(1_000_000)
                         .mode(SpiModeFlags::SPI_MODE_0)

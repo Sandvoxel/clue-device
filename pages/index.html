@@ -24,7 +24,9 @@
             <input type="file" name="files[]" multiple>
             <button type="submit">Upload</button>
         </form>
-
+        <form id="reboot" method="post">
+            <button type="submit">Reboot</button>
+        </form>
 
         <div id="progress-container" style="display: none;">
             <div id="progress-bar"></div>
@@ -53,6 +55,26 @@
         }
     </style>
     <script>
+
+        const rebootform = document.querySelector('#reboot');
+        rebootform.addEventListener('submit', (event) => {
+            event.preventDefault();
+            if (confirm('Are you sure you want to reboot?')) {
+                const xhr = new XMLHttpRequest();
+
+                // Add an event listener for the 'load' event
+                xhr.addEventListener('load', () => {
+                    if (xhr.status === 200) {
+                        alert('Reboot request sent');
+                    } else {
+                        alert(`Reboot failed with status ${xhr.status}`);
+                    }
+                });
+
+                xhr.open('POST', '/reboot');
+                xhr.send();
+            }
+        });
 
         const actionForms = document.querySelectorAll('.action-form');
         actionForms.forEach((actionForm) => {

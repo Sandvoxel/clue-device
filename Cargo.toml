@@ -22,7 +22,6 @@ embedded-hal = "0.2"
 sled = "0.34.1"
 libmpv = "2.0.1"
 mp4 = "0.13.0"
-ctrlc = "3.2.5"
 
 [dependencies.mfrc522]
 path = "./libs/rfid-rs"

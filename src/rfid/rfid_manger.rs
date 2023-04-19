@@ -98,7 +98,7 @@ impl Rfid {
                     if spi.is_err() {
                         error!("Failed to open spi device waiting 3 seconds then retrying");
                         thread::sleep(Duration::from_secs(3));
-                        break;
+                        continue;
                     }
                     let mut spi = spi.unwrap();
 
@@ -222,8 +222,9 @@ fn slice_to_uuid(data: &[u8]) -> Uuid {
     Uuid::from_bytes(Bytes::from(array))
 }
 
+//TODO: should go in util crate
 #[cfg(all(target_os = "linux", target_arch = "arm"))]
-fn is_raspberry_pi() -> bool {
+pub fn is_raspberry_pi() -> bool {
     let cpuinfo = fs::read_to_string("/proc/cpuinfo").expect("Failed to read /proc/cpuinfo");
 
     let is_raspberry_pi = cpuinfo
@@ -247,7 +248,7 @@ fn is_raspberry_pi() -> bool {
 }
 
 #[cfg(not(all(target_os = "linux", target_arch = "arm")))]
-fn is_raspberry_pi() -> bool {
+pub fn is_raspberry_pi() -> bool {
     false
 }
 

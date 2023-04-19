@@ -3,20 +3,16 @@ use std::{fs, thread};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc;
-use std::sync::mpsc::{channel, Receiver, Sender, SendError, TryRecvError};
+
+use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::time::Duration;
 use linux_embedded_hal::{Pin, Spidev};
 use linux_embedded_hal::spidev::{SpidevOptions, SpiModeFlags};
 use linux_embedded_hal::sysfs_gpio::Direction;
-use embedded_hal::blocking::spi::{Transfer as SpiTransfer, Write as SpiWrite};
-use anyhow::Result;
-
 use log::{error, info};
-use mfrc522::{Initialized, Mfrc522, WithNssDelay};
+use mfrc522::Mfrc522;
 use mfrc522::error::Error;
-use serde::de::Unexpected::Str;
-use sled::{Db, IVec};
+use sled::{Db};
 use uuid::{Bytes, Uuid};
 use crate::config::setup::DeviceConfiguration;
 use crate::video_handler::media_manager::Command;
@@ -45,7 +41,7 @@ impl Rfid {
                     }
                     Err(err) => {
                         error!("Failed to send command to rfid reader: {:?}", err);
-                        if let Err(err) = self.vlc_command_channel.send(Command::Idle) {
+                        if let Err(_err) = self.vlc_command_channel.send(Command::Idle) {
                             error!("Failed to send message to send vlc back to idle screen");
                         }
                     }
@@ -152,7 +148,7 @@ impl Rfid {
 
                                                 if let Ok(_) = database.insert(slice_to_uuid(uid.as_bytes()).to_string(), path.display().to_string().as_str()) {
                                                     info!("Card written waiting {}S",clue_timeout);
-                                                    tx.send(Idle).unwrap_or_else(|err|{
+                                                    tx.send(Idle).unwrap_or_else(|_err|{
                                                         error!("Failed send idle screen");
                                                     });
                                                     thread::sleep(Duration::from_secs(clue_timeout));
@@ -192,7 +188,7 @@ impl Rfid {
                         }
 
 
-                        if let Ok(atqa) = mfrc522.reqa() {
+                        if let Ok(_atqa) = mfrc522.reqa() {
 
                         }
 

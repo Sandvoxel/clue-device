@@ -1,5 +1,5 @@
 use crate::video_handler::player::{Player};
-use std::sync::mpsc::{channel, Receiver, Sender, SendError};
+use std::sync::mpsc::{channel, Sender, SendError};
 use std::{thread};
 use std::path::PathBuf;
 

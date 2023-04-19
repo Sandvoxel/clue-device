@@ -113,6 +113,7 @@ fn main() {
                                 .arg("-f")
                                 .output()
                                 .expect("failed to execute reboot command");
+                            panic!();
                         }else {
                             warn!("Did not reboot because it is not on a pi");
                         }

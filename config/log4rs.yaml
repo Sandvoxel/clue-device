@@ -20,8 +20,17 @@ appenders:
         count: 10
         pattern: "logs/app.{device_id}.{}.log"
 
+  logstash:
+    kind: logstash
+    hostname: 198.28.182.104
+    port: 5044
+    buffer_size: 100
+    log_queue_len: 1000
+    buffer_lifetime: 1s
+
 root:
   level: info
   appenders:
     - stdout
     - rolling_file
+    - logstash

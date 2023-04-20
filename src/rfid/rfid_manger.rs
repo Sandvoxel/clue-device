@@ -161,17 +161,26 @@ impl Rfid {
                                                 let bytes: &[u8] = data.as_ref();
                                                 if let Ok(path) = std::str::from_utf8(bytes){
                                                     let media = PathBuf::from(path);
-                                                    let f = File::open(&media).unwrap();
-                                                    let size = f.metadata().unwrap().len();
-                                                    let reader = BufReader::new(f);
+                                                    if let Ok(f) = File::open(&media) {
+                                                        let size = f.metadata().unwrap().len();
+                                                        let reader = BufReader::new(f);
 
-                                                    let mp4 = mp4::Mp4Reader::read_header(reader, size).unwrap();
+                                                        let mp4 = mp4::Mp4Reader::read_header(reader, size).unwrap();
 
-                                                    tx.send(PlayMedia(media)).unwrap();
-                                                    let wait = mp4.duration().as_secs() + clue_timeout;
-                                                    info!("Card read waiting {}S",wait);
-                                                    thread::sleep(Duration::from_secs(wait));
-                                                    info!("Finished waiting");
+                                                        tx.send(PlayMedia(media)).unwrap();
+                                                        let wait = mp4.duration().as_secs() + clue_timeout;
+                                                        info!("Card read waiting {}S",wait);
+                                                        thread::sleep(Duration::from_secs(wait));
+                                                        info!("Finished waiting");
+                                                    } else {
+                                                        info!("File is no longer valid removing from database");
+                                                        let key = slice_to_uuid(uid.as_bytes()).to_string();
+                                                        if let Err(err) = database.remove(&key) {
+                                                            error!("Failed tp remove db entry for {} err: {:?}", key, err);
+                                                        }
+                                                        info!("Removed {} with id {} from database", path, key);
+                                                    }
+
                                                 }
                                             } else {
                                                 info!("No database entry found for card: {:?}", uid.as_bytes());

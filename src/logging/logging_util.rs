@@ -14,7 +14,7 @@ pub fn setup_logging(device_config: &DeviceConfiguration) -> Result<(),  Box<dyn
 
     let mut data:  HashMap<String, Value>  = HashMap::new();
 
-    data.insert("device-id".to_string(), Value::String(device_config.device_uuid.clone()));
+    data.insert("deviceId".to_string(), Value::String(device_config.device_uuid.clone()));
 
     let (appenders, errors) = config.appenders_lossy(&log4rs::config::Deserializers::default().with_logstash_extra(data));
     if !errors.is_empty() {

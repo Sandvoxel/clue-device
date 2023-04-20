@@ -136,6 +136,8 @@ fn main() {
 
         let mut context = Context::new();
         context.insert("items", &paths);
+        context.insert("deviceId", &dev_config.device_uuid);
+
 
         let rendered = tera.render("index.html", &context).unwrap();
 

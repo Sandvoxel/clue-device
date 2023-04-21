@@ -69,10 +69,11 @@ fn main() {
 
                         let filepath = project_dir.join("files").join(decoded_filename);
 
-                        if let Ok(media) = File::open(filepath){
+                        if let Ok(media) = File::open(filepath.clone()){
                             info!("Sending file to client");
                             request.respond(Response::from_file(media)).unwrap();
                             info!("Sent file to client");
+                            continue;
                         } else {
                             error!("Failed to find file at path: {}", filepath.display())
                         }

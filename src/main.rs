@@ -59,7 +59,8 @@ fn main() {
         match request.method() {
             Method::Get => {
                 if request.url().contains("filename") {
-                    if let Some((_, filename)) = request.url().split_once('='){
+                    if let Some((_, filename)) = request.url().split_once('?'){
+                        info!("{}", filename.clone());
                         let decoded_filename = form_urlencoded::parse(filename.as_bytes())
                             .map(|(key, value)| value.into_owned())
                             .collect::<Vec<String>>()
@@ -69,9 +70,19 @@ fn main() {
 
                         let filepath = project_dir.join("files").join(decoded_filename);
 
+                        if !filepath.is_file() {
+                            error!("Could not find file");
+                            request.respond(Response::from_string("").with_status_code(400)).unwrap_or_else(|err|{
+                                error!("Failed to send failed status code: {:?}", err);
+                            });
+                            continue;
+                        }
+
                         if let Ok(media) = File::open(filepath.clone()){
                             info!("Sending file to client");
-                            request.respond(Response::from_file(media)).unwrap();
+                            request.respond(Response::from_file(media)).unwrap_or_else(|err|{
+                                error!("Failed to send file: {:?}", err)
+                            });
                             info!("Sent file to client");
                             continue;
                         } else {

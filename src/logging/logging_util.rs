@@ -26,7 +26,9 @@ pub fn setup_logging(device_config: &DeviceConfiguration) -> Result<(),  Box<dyn
         .build(config.root())?;
 
 
-    log4rs::init_config(config).    let default_hook = std::panic::take_hook();
+    log4rs::init_config(config).unwrap();
+    
+    let default_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panic_info| {
         error!("Application panicked: {:?}", panic_info);
         default_hook(panic_info);

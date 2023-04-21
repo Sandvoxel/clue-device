@@ -139,7 +139,9 @@
 
                 if (action === 'Download') {
                     const downloadLink = document.createElement('a');
-                    downloadLink.href = `/download?filename=${encodeURIComponent(filename)}`;
+                    const filename = formData.get('info');
+
+                    downloadLink.href = `/download?filename=${filename}`;
                     downloadLink.download = filename;
                     downloadLink.style.display = 'none';
                     document.body.appendChild(downloadLink);

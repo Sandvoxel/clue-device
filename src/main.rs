@@ -22,6 +22,7 @@ use multipart::server::{Multipart};
 use tera::{Context, Tera};
 use tiny_http::{Server, Method, Header, StatusCode, Response};
 use log::{debug, error, info, warn};
+use url::form_urlencoded;
 use crate::config::setup::DeviceConfiguration;
 use crate::logging::logging_util::setup_logging;
 use crate::rfid::rfid_manger::{is_raspberry_pi, Rfid};
@@ -57,7 +58,28 @@ fn main() {
 
         match request.method() {
             Method::Get => {
+                if request.url().contains("filename") {
+                    if let Some((_, filename)) = request.url().split_once('='){
+                        let decoded_filename = form_urlencoded::parse(filename.as_bytes())
+                            .map(|(key, value)| value.into_owned())
+                            .collect::<Vec<String>>()
+                            .pop()
+                            .unwrap_or_else(|| String::new());
+                        info!("Decoded filename: {}", decoded_filename);
 
+                        let filepath = project_dir.join("files").join(decoded_filename);
+
+                        if let Ok(media) = File::open(filepath){
+                            info!("Sending file to client");
+                            request.respond(Response::from_file(media)).unwrap();
+                            info!("Sent file to client");
+                        } else {
+                            error!("Failed to find file at path: {}", filepath.display())
+                        }
+
+                    }
+
+                }
             },
             Method::Post => {
                 match request.url() {

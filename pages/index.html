@@ -147,6 +147,7 @@
                     document.body.appendChild(downloadLink);
                     downloadLink.click();
                     document.body.removeChild(downloadLink);
+                    return;
                 } else {
                     // Add an event listener for the 'load' event
                     xhr.addEventListener('load', () => {

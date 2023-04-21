@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use log4rs::Config;
 use log4rs::config::{InitError, RawConfig};
+use log::{error};
 use qoollo_log4rs_logstash::config::DeserializersExt;
 use serde_json::Value;
 

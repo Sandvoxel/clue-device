@@ -3,6 +3,8 @@ use std::{fs, thread};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::time::Duration;
@@ -27,7 +29,8 @@ pub struct Rfid {
     vlc_command_channel: Sender<Command>,
     sled_database: Db,
     device_configuration: DeviceConfiguration,
-    command_channel: Sender<RfidCommands>
+    command_channel: Sender<RfidCommands>,
+    is_waiting: Arc<AtomicBool>
 }
 
 impl Rfid {
@@ -78,11 +81,16 @@ impl Rfid {
             vlc_command_channel,
             sled_database,
             device_configuration,
-            command_channel: commands.0
+            command_channel: commands.0,
+            is_waiting: Arc::new(AtomicBool::new(true))
         };
 
         rfid.start_rfid_thread(commands.1);
         rfid
+    }
+
+    pub fn is_waiting(&self) -> bool {
+        self.is_waiting.load(Ordering::SeqCst)
     }
 
     fn start_rfid_thread(&self,commands_rx: Receiver<RfidCommands>) {
@@ -90,10 +98,11 @@ impl Rfid {
             let clue_timeout = self.device_configuration.clue_timeout;
             let tx = self.vlc_command_channel.clone();
             let database = self.sled_database.clone();
-            let retrys = self.device_configuration.rfid_retrys;
+            let retry = self.device_configuration.rfid_retrys;
+            let is_waiting = self.is_waiting.clone();
             thread::spawn(move || {
-                for i in 0..retrys {
-                    info!("Starting rfid reader ({} of {})", i, retrys-1);
+                for i in 0..retry {
+                    info!("Starting rfid reader ({} of {})", i, retry-1);
                     let spi = Spidev::open("/dev/spidev0.0");
                     if spi.is_err() {
                         error!("Failed to open spi device waiting 3 seconds then retrying");
@@ -145,18 +154,22 @@ impl Rfid {
                                     match commands_rx.try_recv() {
                                         Ok(message) => {
                                             match message { RfidCommands::PairCard(path) => {
+                                                while let Ok(value) = commands_rx.try_recv() {
+                                                    println!("received {:?}", value);
+                                                }
 
                                                 if let Ok(_) = database.insert(slice_to_uuid(uid.as_bytes()).to_string(), path.display().to_string().as_str()) {
                                                     info!("Card written waiting {}S",clue_timeout);
                                                     tx.send(Idle).unwrap_or_else(|_err|{
                                                         error!("Failed send idle screen");
                                                     });
+                                                    is_waiting.store(true, Ordering::SeqCst);
                                                     thread::sleep(Duration::from_secs(clue_timeout));
+                                                    is_waiting.store(false, Ordering::SeqCst);
                                                 }
                                             }}
                                         },
                                         Err(TryRecvError::Empty) => {
-
                                             if let Ok(Some(data)) = database.get(slice_to_uuid(uid.as_bytes()).to_string()) {
                                                 let bytes: &[u8] = data.as_ref();
                                                 if let Ok(path) = std::str::from_utf8(bytes){
@@ -170,7 +183,9 @@ impl Rfid {
                                                         tx.send(PlayMedia(media)).unwrap();
                                                         let wait = mp4.duration().as_secs() + clue_timeout;
                                                         info!("Card read waiting {}S",wait);
+                                                        is_waiting.store(true, Ordering::SeqCst);
                                                         thread::sleep(Duration::from_secs(wait));
+                                                        is_waiting.store(false, Ordering::SeqCst);
                                                         info!("Finished waiting");
                                                     } else {
                                                         info!("File is no longer valid removing from database");

@@ -95,7 +95,7 @@ impl From<u8> for Sak {
 }
 
 impl Sak {
-    pub fn get_type(&self) -> Type {
+    pub fn _get_type(&self) -> Type {
         // https://www.nxp.com/docs/en/application-note/AN10833.pdf
         // 3.2 Coding of Select Acknowledge (SAK)
         // ignore 8-bit (iso14443 starts with LSBit = bit 1)

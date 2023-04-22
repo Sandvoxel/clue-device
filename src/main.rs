@@ -7,15 +7,11 @@ mod web_server;
 mod config;
 mod logging;
 
-use std::{fs, io, thread};
+use std::{fs, io};
 use std::env::current_dir;
-
 use std::fs::{File};
-use std::io::{Read};
 use std::process::Command;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
+
 
 
 use multipart::server::{Multipart};
@@ -62,7 +58,7 @@ fn main() {
                     if let Some((_, filename)) = request.url().split_once('?'){
                         info!("{}", filename.clone());
                         let decoded_filename = form_urlencoded::parse(filename.as_bytes())
-                            .map(|(key, value)| value.into_owned())
+                            .map(|(_, value)| value.into_owned())
                             .collect::<Vec<String>>()
                             .pop()
                             .unwrap_or_else(|| String::new());

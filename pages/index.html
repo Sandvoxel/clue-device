@@ -154,6 +154,8 @@
                         if (xhr.status === 200) {
                             // Handle successful submission
                             console.log('Form submitted successfully');
+                        } else if (xhr.status === 401){
+                            alert(`Video is still playing please wait until complete`);
                         } else {
                             alert(`Form submission failed with status ${xhr.status}`);
                         }

@@ -34,13 +34,13 @@
 //! - [STM32L4](https://gitlab.com/jspngh/stm32l4-mfrc522)
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(unused_must_use)]
 
 pub mod error;
 mod picc;
 mod register;
 mod util;
 
-use core::time::Duration;
 use embedded_hal as hal;
 use hal::blocking::spi;
 use hal::digital::v2::OutputPin;
@@ -51,9 +51,9 @@ use error::Error;
 use register::*;
 use util::{DummyDelay, DummyNSS, Sealed};
 
-const MIFARE_ACK: u8 = 0xA;
-const MIFARE_KEYSIZE: usize = 6;
-pub type MifareKey = [u8; MIFARE_KEYSIZE];
+const _MIFARE_ACK: u8 = 0xA;
+const _MIFARE_KEYSIZE: usize = 6;
+pub type MifareKey = [u8; _MIFARE_KEYSIZE];
 
 pub enum Uid {
     /// Single sized UID, 4 bytes long

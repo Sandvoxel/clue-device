@@ -11,7 +11,7 @@ use serde::Deserialize;
 use crate::rfid::rfid_manger::Rfid;
 use crate::video_handler::media_manager::Command::PlayMedia;
 use crate::video_handler::media_manager::VlcManager;
-use crate::web_server::file_action_handler::ActionFormError::{FailedToDecodeForm, FailedToDelete, IoError};
+use crate::web_server::file_action_handler::ActionFormError::{FailedToDecodeForm, FailedToDelete, IoError, RfidReaderStillWaiting};
 use crate::web_server::file_action_handler::Actions::{Delete, Download, PairToCard, Play};
 
 pub fn route_action_form(mut request: Request, media_manager: &VlcManager, rfid_manger: &Rfid) -> Result<Actions, ActionFormError> {
@@ -28,9 +28,15 @@ pub fn route_action_form(mut request: Request, media_manager: &VlcManager, rfid_
 
             match form_data.action {
                 PairToCard => {
-                    rfid_manger.pair_card(media_dir.as_path());
-                    request.respond(Response::from_string("paired card"))?;
-                    Ok(PairToCard)
+                    if !rfid_manger.is_waiting() {
+                        rfid_manger.pair_card(media_dir.as_path());
+                        request.respond(Response::from_string("paired card"))?;
+                        Ok(PairToCard)
+                    } else {
+                        request.respond(Response::from_string("still waiting").with_status_code(401))?;
+                        error!("Will not send idle command as the reader is still waiting for video to complete");
+                        Err(RfidReaderStillWaiting)
+                    }
                 }
                 Play => {
                     media_manager.send_command(PlayMedia(media_dir)).unwrap_or_else(|error|{
@@ -81,7 +87,8 @@ pub fn route_action_form(mut request: Request, media_manager: &VlcManager, rfid_
 pub enum ActionFormError {
     FailedToDelete(String),
     IoError(std::io::Error),
-    FailedToDecodeForm
+    FailedToDecodeForm,
+    RfidReaderStillWaiting
 }
 impl Display for ActionFormError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -89,6 +96,7 @@ impl Display for ActionFormError {
             FailedToDelete(file) => {write!(f, "Failed to delete file: {}", file)}
             FailedToDecodeForm => {write!(f, "Failed to decode form data")}
             IoError(error) => {write!(f, "Io operation failed: {}", error)}
+            RfidReaderStillWaiting => {write!(f, "Tried to command rfid reader wile still waiting on video to complete")}
         }
     }
 }

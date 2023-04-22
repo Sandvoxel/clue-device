@@ -82,7 +82,7 @@ impl Rfid {
             sled_database,
             device_configuration,
             command_channel: commands.0,
-            is_waiting: Arc::new(AtomicBool::new(true))
+            is_waiting: Arc::new(AtomicBool::new(false))
         };
 
         rfid.start_rfid_thread(commands.1);

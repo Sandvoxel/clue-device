@@ -31,7 +31,8 @@ impl Player {
         if let Ok(media_player) = Mpv::new() {
             media_player.set_property("volume", 100)?;
             media_player.set_property("keep-open", "yes")?;
-            
+            media_player.set_property("ao", "jack")?;
+
 
             let files_dir = current_dir().unwrap().join("files");
 

@@ -29,7 +29,7 @@ impl Player {
     //FIXME use proper error here
     pub fn new(command_channel: (Sender<Command>, Receiver<Command>)) -> Result<Player, libmpv::Error> {
         if let Ok(media_player) = Mpv::new() {
-            media_player.set_property("volume", 15)?;
+            media_player.set_property("volume", 100)?;
             media_player.set_property("keep-open", "yes")?;
             
 

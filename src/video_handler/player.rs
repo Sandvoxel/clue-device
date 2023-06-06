@@ -70,6 +70,7 @@ impl Player {
         }
         Err(libmpv::Error::Null)
     }
+
 }
 
 
@@ -90,7 +91,10 @@ impl Player {
                     if is_playable_by_mpv(path.as_path()) {
                         info!("Playing: {}", path.display());
                         self.media_player.playlist_load_files(&[(path.as_path().display().to_string().as_str(), FileState::Replace, None)])
-                            .unwrap();
+                            .unwrap_or_else(|| {
+                                self.media_player = Mpv::new().unwrap();
+                                self.media_player.playlist_load_files(&[(path.as_path().display().to_string().as_str(), FileState::Replace, None)]).unwrap();
+                            });
                         self.media_player.unpause().unwrap();
                         self.media_player.playlist_load_files(&[(self.idle_media.as_path().display().to_string().as_str(), FileState::AppendPlay, None)])
                             .unwrap();

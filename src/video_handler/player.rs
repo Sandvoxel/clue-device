@@ -93,6 +93,10 @@ impl Player {
                         self.media_player.playlist_load_files(&[(path.as_path().display().to_string().as_str(), FileState::Replace, None)])
                             .unwrap_or_else(|_| {
                                 self.media_player = Mpv::new().unwrap();
+                                self.media_player.set_property("volume", 100).unwrap();
+                                self.media_player.set_property("keep-open", "yes").unwrap();
+                                self.media_player.set_property("ao", "alsa").unwrap();
+
                                 self.media_player.playlist_load_files(&[(path.as_path().display().to_string().as_str(), FileState::Replace, None)]).unwrap();
                             });
                         self.media_player.unpause().unwrap();

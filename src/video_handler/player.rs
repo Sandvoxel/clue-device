@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use libmpv::{FileState, Mpv};
 
-use log::{error, info};
+use log::{error, info, warn};
 use crate::video_handler::default_images::{create_idle_image, create_paircard_image, create_startup_file};
 use crate::video_handler::media_manager::{Command};
 use crate::video_handler::media_manager::Command::{Idle, PairCard, PlayMedia};
@@ -92,6 +92,7 @@ impl Player {
                         info!("Playing: {}", path.display());
                         self.media_player.playlist_load_files(&[(path.as_path().display().to_string().as_str(), FileState::Replace, None)])
                             .unwrap_or_else(|_| {
+                                warn!("Failed to changed video recreating the mpv player");
                                 self.media_player = Mpv::new().unwrap();
                                 self.media_player.set_property("volume", 100).unwrap();
                                 self.media_player.set_property("keep-open", "yes").unwrap();
